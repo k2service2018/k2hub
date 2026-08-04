@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--
+  K2 Equipment & Service Hub — หน้าห่อสำหรับ GitHub Pages
+  ========================================================
+  จุดประสงค์เดียว: ซ่อนแถบ "แอปพลิเคชันนี้สร้างโดยผู้ใช้ Google Apps Script"
+  ซึ่ง Google ใส่ไว้ในหน้าห่อของ Apps Script เอง และจะไม่ถูกวาดเมื่อแอปถูกฝัง
+  ใน iframe ของหน้าอื่น
+
+  สำคัญ: ห้ามใส่ attribute `sandbox` ใน <iframe> — Google Sites ใส่ให้อัตโนมัติ
+  และนั่นคือสาเหตุที่เมนูในแอปกดไม่ได้เมื่อฝังผ่าน Sites
+
+  ชื่อไฟล์ต้องเป็น index.html เท่านั้น GitHub Pages จึงจะเสิร์ฟที่ URL หลัก
+-->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>K2 Equipment &amp; Service Hub</title>
+  <meta name="theme-color" content="#4f6ef7">
+  <!-- ให้ iOS เปิดแบบเต็มจอเมื่อกด "เพิ่มไปยังหน้าจอโฮม" -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="K2 Hub">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f6ef7'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; }
+    /* 100dvh ไม่ใช่ 100vh — บนมือถือ 100vh จะถูกแถบล่างของเบราว์เซอร์ทับ */
+    iframe { display: block; border: 0; width: 100%; height: 100dvh; }
+    @supports not (height: 100dvh) { iframe { height: 100vh; } }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://script.google.com/macros/s/AKfycbxQ8mrwRgf21WtqmaPm02AXpQ1ukS8IEt3N3rreMmd3MkHcVw2bEeevY4q4XPvYYKygOg/exec"
+    title="K2 Equipment &amp; Service Hub"
+    allow="camera; clipboard-write"></iframe>
+</body>
+</html>
