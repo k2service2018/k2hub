@@ -14,7 +14,10 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- ไม่ใส่ viewport-fit=cover — มันแปลว่า "ให้เนื้อหาลอดใต้ขอบจอทุกด้าน" ซึ่งพอ
+       เปิดจากไอคอนหน้าจอโฮม (โหมดเต็มจอของ iOS) แถบบนของแอปจะไปอยู่ใต้แถบ
+       สถานะจนมองไม่เห็น และขีด home indicator ล่างจะทับเนื้อหา -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>K2 Equipment &amp; Service Hub</title>
   <meta name="theme-color" content="#4f6ef7">
   <!-- ให้ iOS เปิดแบบเต็มจอเมื่อกด "เพิ่มไปยังหน้าจอโฮม" -->
@@ -26,7 +29,16 @@
     /* fixed + inset:0 กันไม่ให้ iframe ดันหน้านี้ให้ยาวขึ้น — บน iOS เฟรมจะยืดตาม
        เนื้อหาข้างในเอง แล้วหน้านอกจะกลายเป็นตัวที่เลื่อน ทำให้แถบบนของแอป
        (ที่มีปุ่ม ☰) เลื่อนหลุดจอไปโดยกดกลับไม่ได้ */
-    iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
+    /* กันเผื่ออีกชั้น: ถ้าเครื่องไหนยังกินพื้นที่ลอดขอบจอ ให้เว้นระยะปลอดภัยไว้
+       (เครื่องที่ไม่มีขอบเว้า ค่าพวกนี้เป็น 0 อยู่แล้ว ไม่กระทบอะไร) */
+    iframe {
+      position: fixed;
+      top: env(safe-area-inset-top, 0px);
+      right: env(safe-area-inset-right, 0px);
+      bottom: env(safe-area-inset-bottom, 0px);
+      left: env(safe-area-inset-left, 0px);
+      display: block; border: 0;
+    }
   </style>
 </head>
 <body>
