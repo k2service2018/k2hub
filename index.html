@@ -49,11 +49,15 @@
     (function () {
       var frame = document.getElementById('app');
       var APP_PREFIX = 'https://script.google.com/macros/s/';
+      // โค้ดของแอปไม่ได้อยู่ใน iframe ลูกโดยตรง แต่อยู่ในชั้นหลานที่ GAS สร้าง
+      // ซ้อนอีกที (โดเมน n-xxxx.googleusercontent.com) การเทียบว่า
+      // e.source === frame.contentWindow จึงไม่ผ่าน — ต้องเช็คที่โดเมนผู้ส่งแทน
+      var OK_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(script\.google\.com|googleusercontent\.com)$/;
 
       window.addEventListener('message', function (e) {
         var d = e.data;
         if (!d || typeof d !== 'object') return;              // GAS เองก็ส่ง string มา
-        if (e.source !== frame.contentWindow) return;          // รับเฉพาะจากแอปของเรา
+        if (!OK_ORIGIN.test(e.origin)) return;                 // รับเฉพาะเฟรมที่ Google เสิร์ฟ
         if (d.k2 === 'hello') {
           window.__k2handshake = true;                         // ไว้ตรวจตอนแก้ปัญหา
           e.source.postMessage({ k2: 'wrapper' }, '*');
