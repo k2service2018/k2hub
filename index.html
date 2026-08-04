@@ -29,9 +29,39 @@
   </style>
 </head>
 <body>
-  <iframe
+  <iframe id="app"
     src="https://script.google.com/macros/s/AKfycbxQ8mrwRgf21WtqmaPm02AXpQ1ukS8IEt3N3rreMmd3MkHcVw2bEeevY4q4XPvYYKygOg/exec"
     title="K2 Equipment &amp; Service Hub"
     allow="camera; clipboard-write"></iframe>
+
+  <script>
+    /*
+      แอปเปลี่ยนหน้าเองไม่ได้เมื่อถูกฝัง — ลิงก์ทุกอันสั่ง "หน้าต่างบนสุด" ซึ่งคือ
+      หน้านี้ ผลคือทะลุออกไปที่ script.google.com แล้วแถบแจ้งเตือนกลับมา
+      หน้านี้จึงรับหน้าที่เปลี่ยน src ของ iframe ให้แทน
+
+      สองข้อความเท่านั้น:
+        {k2:'hello'} จากแอป -> ตอบ {k2:'wrapper'} กลับไป เพื่อให้แอปรู้ว่ามีหน้าห่อ
+                               อยู่จริง (ไม่ใช่การเดาจากจำนวนชั้น iframe ซึ่งแยก
+                               "เปิดตรง" กับ "ถูกฝัง" ไม่ออก)
+        {k2:'nav', url}      -> เปลี่ยนหน้า
+    */
+    (function () {
+      var frame = document.getElementById('app');
+      var APP_PREFIX = 'https://script.google.com/macros/s/';
+
+      window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (!d || typeof d !== 'object') return;              // GAS เองก็ส่ง string มา
+        if (e.source !== frame.contentWindow) return;          // รับเฉพาะจากแอปของเรา
+        if (d.k2 === 'hello') {
+          window.__k2handshake = true;                         // ไว้ตรวจตอนแก้ปัญหา
+          e.source.postMessage({ k2: 'wrapper' }, '*');
+        } else if (d.k2 === 'nav' && typeof d.url === 'string' && d.url.indexOf(APP_PREFIX) === 0) {
+          frame.src = d.url;
+        }
+      });
+    }());
+  </script>
 </body>
 </html>
