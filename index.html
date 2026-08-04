@@ -22,10 +22,11 @@
   <meta name="apple-mobile-web-app-title" content="K2 Hub">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f6ef7'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; }
-    /* 100dvh ไม่ใช่ 100vh — บนมือถือ 100vh จะถูกแถบล่างของเบราว์เซอร์ทับ */
-    iframe { display: block; border: 0; width: 100%; height: 100dvh; }
-    @supports not (height: 100dvh) { iframe { height: 100vh; } }
+    html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; overflow: hidden; }
+    /* fixed + inset:0 กันไม่ให้ iframe ดันหน้านี้ให้ยาวขึ้น — บน iOS เฟรมจะยืดตาม
+       เนื้อหาข้างในเอง แล้วหน้านอกจะกลายเป็นตัวที่เลื่อน ทำให้แถบบนของแอป
+       (ที่มีปุ่ม ☰) เลื่อนหลุดจอไปโดยกดกลับไม่ได้ */
+    iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
   </style>
 </head>
 <body>
