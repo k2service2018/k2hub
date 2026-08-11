@@ -17,6 +17,13 @@
   <title>K2 Medical Tender Price</title>
   <meta name="theme-color" content="#4f6ef7">
   <meta name="apple-mobile-web-app-title" content="K2 Tender">
+  <!-- Drawn inline as a data: URI so there is no second file to upload and
+       nothing to 404. Without this line the browser falls back to
+       /favicon.ico at the domain root, which does not exist — hence the
+       generic globe next to a tab that says K2.
+       Teal rather than the Equipment Hub's blue: both tabs say K2, and when
+       they sit side by side the colour is what tells them apart. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230ea5a4'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; overflow: hidden; }
     iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
