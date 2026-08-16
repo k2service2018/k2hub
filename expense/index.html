@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--
+  TSAE Expense - หน้าห่อสำหรับ GitHub Pages
+  จุดประสงค์เดียว: ซ่อนแถบ "แอปพลิเคชันนี้สร้างโดยผู้ใช้ Google Apps Script"
+  ซึ่ง Google ไม่วาดเมื่อแอปถูกฝังใน iframe ของหน้าอื่น
+
+  ห้ามใส่: sandbox ใน iframe / viewport-fit=cover / apple-mobile-web-app-capable
+  ทั้งสามอย่างทำให้แถบบนของแอปกดไม่ได้บน iPhone (บทเรียนจาก Equipment Hub)
+
+  ไม่ต้องมีสคริปต์ postMessage แบบ Equipment Hub เพราะแอปนี้ไม่เคยเปลี่ยน URL
+  ของหน้าตัวเอง — หน้าย่อย (HR Per Diem / Admin Checklist / Dashboard) เปิด
+  ด้วย window.open(..., '_blank') เป็นแท็บใหม่อยู่แล้ว
+  ผลที่ตามมา: แท็บใหม่พวกนั้นจะเปิด script.google.com ตรง ๆ และยังเห็นแถบของ
+  Google อยู่ ถ้าจะให้หายต้องแก้ที่ตัวแอป ไม่ใช่ที่ไฟล์นี้
+-->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TSAE Expense</title>
+  <meta name="theme-color" content="#4f6ef7">
+  <meta name="apple-mobile-web-app-title" content="TSAE Expense">
+  <!-- Drawn inline as a data: URI so there is no second file to upload and
+       nothing to 404. Without this line the browser falls back to
+       /favicon.ico at the domain root, which does not exist — hence the
+       generic globe next to a tab that says K2.
+       Amber here: Equipment Hub is blue and Tender is teal, and at 16px the
+       colour is the only thing telling three K2 tabs apart. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e8a13c'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; overflow: hidden; }
+    iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://script.google.com/macros/s/AKfycbzHU346-2BI9MLOLZIA7GPFJLzgOt1irJwbcSGzoKnbW2JcfGlNLgbWhS1RPkBdGWuf/exec"
+    title="TSAE Expense"
+    allow="clipboard-write"></iframe>
+</body>
+</html>
