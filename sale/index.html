@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!--
+  K2 Sale System - หน้าห่อสำหรับ GitHub Pages
+  จุดประสงค์เดียว: ซ่อนแถบ "แอปพลิเคชันนี้สร้างโดยผู้ใช้ Google Apps Script"
+  ซึ่ง Google ไม่วาดเมื่อแอปถูกฝังใน iframe ของหน้าอื่น
+
+  ห้ามใส่: sandbox ใน iframe / viewport-fit=cover / apple-mobile-web-app-capable
+  ทั้งสามอย่างทำให้แถบบนของแอปกดไม่ได้บน iPhone (บทเรียนจาก Equipment Hub)
+  โดยเฉพาะ sandbox ยังทำให้ Chrome บล็อกการดาวน์โหลด PDF ที่แอปนี้ต้องใช้ด้วย
+
+  ไม่ต้องมีสคริปต์ postMessage แบบ Equipment Hub เพราะ Sale System เป็นแอปหน้าเดียว
+  กดเมนูแล้วสลับเนื้อหาในหน้าเดิม ไม่ได้โหลด URL ใหม่ — เหมือน Tender
+
+  ⚠️ URL ใน src ผูกกับ deployment ตัวที่ทีมใช้ ถ้าวันหนึ่งต้องออก deployment ใหม่
+     (ไม่ใช่แค่ redeploy เวอร์ชันเดิม) ต้องมาแก้ URL ตรงนี้ด้วย
+-->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K2 Sale System</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-title" content="K2 Sale">
+  <!-- Drawn inline as a data: URI so there is no second file to upload and
+       nothing to 404. Without this line the browser falls back to
+       /favicon.ico at the domain root, which does not exist — hence the
+       generic globe next to a tab that says K2.
+       Green here: the Equipment Hub is blue, Tender teal, Expense orange.
+       Four tabs all say K2, so the colour is the only thing that tells them
+       apart at a glance. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232f9e44'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f4f6fb; overflow: hidden; }
+    iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://script.google.com/macros/s/AKfycbycxVaAS_DVU0hEJn1Mnq-B-QMp069E5yNknNM3CbwAHdwiaCl2nde94ribtdQk6VtRsQ/exec"
+    title="K2 Sale System"
+    allow="clipboard-write"></iframe>
+</body>
+</html>
