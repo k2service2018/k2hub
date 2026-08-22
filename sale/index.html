@@ -68,10 +68,17 @@
 
     function read() {
       var r = frame.getBoundingClientRect();
+      var cs = getComputedStyle(frame);
       band.style.top = (window.scrollY + r.top) + 'px';
 
       var vv = window.visualViewport;
       box.textContent =
+        // สองบรรทัดนี้บอกว่ากำลังดูหน้าเวอร์ชันไหนอยู่ ถ้าไม่ใช่ B แปลว่าเบราว์เซอร์
+        // ยังใช้หน้าเก่าที่แคชไว้ ไม่ใช่ว่าโค้ดใหม่ไม่ได้ผล
+        'BUILD                 B (2026-08-22 dvh)\n' +
+        'iframe position       ' + cs.position + '  <= ต้องเป็น static\n' +
+        'iframe height (css)   ' + cs.height + '\n' +
+        '----\n' +
         'window.innerHeight    ' + num(window.innerHeight) + '\n' +
         'doc.clientHeight      ' + num(document.documentElement.clientHeight) + '\n' +
         'visualViewport.height ' + num(vv && vv.height) + '\n' +
