@@ -62,14 +62,37 @@
     var vv = window.visualViewport;
     if (!vv) return;
     var frame = document.querySelector('iframe');
+
     function fit() {
-      var h = Math.round(vv.height) + 'px';
-      document.documentElement.style.height = h;
-      document.body.style.height = h;
-      frame.style.height = h;
+      var h = Math.round(vv.height);
+      document.documentElement.style.height = h + 'px';
+      document.body.style.height = h + 'px';
+
+      /* ⚠️ ตั้งแต่ความสูงอย่างเดียวไม่พอ — ต้องชดเชย offsetTop ด้วย
+       *
+       * รอบก่อนตั้งความสูงให้พอดีแล้ว แต่ส่วนบนยังถูกบังอยู่ ตัวเลขอธิบายว่าทำไม:
+       * พอหน้าไม่มีที่ให้เลื่อน Safari จะกางแถบ URL ค้างไว้ แล้ววาง**ทับ**ส่วนบนของหน้า
+       * แทนที่จะเบียดพื้นที่ลงมา — visualViewport.offsetTop จึงกลายเป็น 52
+       * แปลว่าเนื้อหาที่ y=0 ถึง 52 อยู่ใต้แถบ URL มองไม่เห็น
+       *
+       * position:fixed อ้างอิง layout viewport ซึ่งเริ่มที่ y=0 (ใต้แถบ URL ขึ้นไป)
+       * ส่วน offsetTop คือระยะห่างระหว่างจุดนั้นกับขอบบนของพื้นที่ที่มองเห็นจริง
+       * บวกเข้าไปเฟรมจึงไปเริ่มตรงขอบบนของพื้นที่ที่เห็นพอดี
+       *
+       * ทั้ง height และ offsetTop เป็นค่าที่**วัดได้จากเครื่องจริง** ไม่ใช่หน่วยที่ต้องเดา
+       * ว่าเบราว์เซอร์จะตีความยังไง (100dvh ให้ 659 ทั้งที่มองเห็นแค่ 606 มาแล้ว)
+       */
+      frame.style.position = 'fixed';
+      frame.style.left = Math.round(vv.offsetLeft) + 'px';
+      frame.style.top = Math.round(vv.offsetTop) + 'px';
+      frame.style.width = Math.round(vv.width) + 'px';
+      frame.style.height = h + 'px';
     }
+
     fit();
     vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);      // offsetTop ขยับตอนเลื่อน ต้องตามให้ทัน
+    addEventListener('scroll', fit);
     addEventListener('orientationchange', fit);
   }());
   </script>
