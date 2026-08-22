@@ -40,37 +40,6 @@
       addEventListener('orientationchange', fit);
     }());
 
-    if (location.hash === '#diag') (function () {
-      var f = document.getElementById('app');
-      var band = document.createElement('div');
-      band.style.cssText = 'position:fixed;left:0;right:0;height:28px;z-index:9;' +
-        'background:#dc2626;color:#fff;font:bold 13px/28px monospace;text-align:center;pointer-events:none';
-      band.textContent = 'ขอบบนของเฟรม';
-      document.body.appendChild(band);
-      var box = document.createElement('pre');
-      box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10;margin:0;' +
-        'background:#0f172a;color:#e2e8f0;font:11px/1.5 monospace;padding:8px 10px;pointer-events:none';
-      document.body.appendChild(box);
-      var vv = window.visualViewport;
-      function n(v) { return (v == null) ? '-' : Math.round(v); }
-      function read() {
-        var r = f.getBoundingClientRect();
-        band.style.top = r.top + 'px';
-        box.textContent =
-          'BUILD                 service-A\n' +
-          'iframe position       ' + getComputedStyle(f).position + '\n' +
-          'window.innerHeight    ' + n(window.innerHeight) + '\n' +
-          'doc.clientHeight      ' + n(document.documentElement.clientHeight) + '\n' +
-          'visualViewport.height ' + n(vv && vv.height) + '\n' +
-          'visualViewport.top    ' + n(vv && vv.offsetTop) + '\n' +
-          'window.scrollY        ' + n(window.scrollY) + '\n' +
-          'iframe rect.top       ' + n(r.top) + '\n' +
-          'iframe rect.height    ' + n(r.height);
-      }
-      read();
-      setInterval(read, 500);
-    }());
-
     (function () {
       var frame = document.getElementById('app');
       var APP_PREFIX = 'https://script.google.com/macros/s/';
