@@ -9,8 +9,32 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232f9e44'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; background: #f4f6fb; overflow: hidden; }
-    iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
+    /* ⚠️ วัดจริงบน iPhone แล้ว ห้ามเปลี่ยนกลับเป็น height:100% + position:fixed
+     *
+     * ตัวเลขจาก Safari ตอนที่ยังพัง:
+     *     doc.clientHeight      659   <- layout viewport (สูงเท่าตอนซ่อนแถบ URL)
+     *     visualViewport.height 606   <- ที่มองเห็นจริง
+     *     window.scrollY         52
+     *     iframe rect.top       -52   <- ขอบบนของเฟรมหลุดขึ้นไปเหนือจอ
+     *
+     * ลูกโซ่ของอาการ: height:100% วัดเทียบ layout viewport จึงได้ 659 สูงกว่าที่เห็น 53px
+     * -> หน้ามีที่ให้เลื่อน -> Safari เลื่อนไปเอง 52px (overflow:hidden กันผู้ใช้เลื่อนได้
+     * แต่กันเบราว์เซอร์เลื่อนเองไม่ได้) -> position:fixed บน iOS อ้างอิง layout viewport
+     * ที่ถูกเลื่อนไปแล้ว เฟรมจึงขยับขึ้นตาม -> ส่วนบนของแอปราว 52px ถูกบัง ดึงกลับไม่ได้
+     *
+     * 100dvh คือความสูงที่มองเห็นจริง ทั้งหน้าจึงสูงเท่าที่เห็นพอดี ไม่เหลือที่ให้เลื่อน
+     * เมื่อไม่มีที่ให้เลื่อน scrollY ก็เป็น 0 ตลอด และ rect.top เป็น 0 ตาม
+     * height:100% ที่อยู่ก่อนหน้าเป็นทางถอยของเบราว์เซอร์เก่าที่ไม่รู้จัก dvh
+     *
+     * เอา position:fixed ออกด้วย เพราะบน iOS มันอ้างอิง layout viewport ไม่ใช่ที่เห็นจริง
+     * (เดิมใส่ไว้กันเฟรมยืดตามเนื้อหา — ตอนนี้หน้าในตั้ง height:100dvh + overflow:hidden
+     *  ไว้แล้ว เฟรมจึงไม่มีเหตุให้ยืด และ overflow:hidden ตรงนี้ยังคลุมไว้อีกชั้น)
+     *
+     * บนเบราว์เซอร์ในแอป LINE ไม่เคยมีอาการนี้ เพราะทุกค่าเท่ากันหมด (669) — จอเดียวกัน
+     * แต่คนละเบราว์เซอร์ให้ผลคนละอย่าง จึงต้องวัดบนเครื่องจริง ไม่ใช่เดา
+     */
+    html, body { margin: 0; padding: 0; background: #f4f6fb; overflow: hidden; height: 100%; height: 100dvh; }
+    iframe { display: block; border: 0; width: 100%; height: 100%; height: 100dvh; }
   </style>
 </head>
 <body>
