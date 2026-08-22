@@ -1,36 +1,14 @@
 <!DOCTYPE html>
-<!--
-  K2 Equipment & Service Hub — หน้าห่อสำหรับ GitHub Pages
-  ========================================================
-  จุดประสงค์เดียว: ซ่อนแถบ "แอปพลิเคชันนี้สร้างโดยผู้ใช้ Google Apps Script"
-  ซึ่ง Google ใส่ไว้ในหน้าห่อของ Apps Script เอง และจะไม่ถูกวาดเมื่อแอปถูกฝัง
-  ใน iframe ของหน้าอื่น
-
-  สำคัญ: ห้ามใส่ attribute `sandbox` ใน <iframe> — Google Sites ใส่ให้อัตโนมัติ
-  และนั่นคือสาเหตุที่เมนูในแอปกดไม่ได้เมื่อฝังผ่าน Sites
-
-  ชื่อไฟล์ต้องเป็น index.html เท่านั้น GitHub Pages จึงจะเสิร์ฟที่ URL หลัก
--->
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <!-- ไม่ใส่ viewport-fit=cover — มันแปลว่า "ให้เนื้อหาลอดใต้ขอบจอทุกด้าน" ซึ่งพอ
-       เปิดจากไอคอนหน้าจอโฮม (โหมดเต็มจอของ iOS) แถบบนของแอปจะไปอยู่ใต้แถบ
-       สถานะจนมองไม่เห็น และขีด home indicator ล่างจะทับเนื้อหา -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>K2 Service &amp; Equipment Hub</title>
   <meta name="theme-color" content="#4f6ef7">
-  <!-- ไม่ใส่ apple-mobile-web-app-capable: โหมดเต็มจอของ iOS ดันแถบบนของแอปไปอยู่ใต้แถบสถานะจนกดปุ่มเมนูไม่ได้ (ทดสอบแล้วทั้งเอา viewport-fit=cover ออกและสร้างไอคอนใหม่ ก็ยังเหมือนเดิม) - มีแถบ Safari บาง ๆ แต่กดเมนูได้ ดีกว่า -->
   <meta name="apple-mobile-web-app-title" content="K2 Hub">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f6ef7'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #f5f6fb; overflow: hidden; }
-    /* fixed + inset:0 กันไม่ให้ iframe ดันหน้านี้ให้ยาวขึ้น — บน iOS เฟรมจะยืดตาม
-       เนื้อหาข้างในเอง แล้วหน้านอกจะกลายเป็นตัวที่เลื่อน ทำให้แถบบนของแอป
-       (ที่มีปุ่ม ☰) เลื่อนหลุดจอไปโดยกดกลับไม่ได้ */
-    /* ต้องระบุ width/height เป็นตัวเลขเสมอ — iOS ย่อ iframe ลงเท่าเนื้อหาถ้าปล่อยให้
-       ความสูงมาจาก top/bottom เฉย ๆ แล้วหน้าจะถูกตัดกลางคัน
-       (พื้นที่ปลอดภัยของขอบจอ จัดการด้วยการไม่ใส่ viewport-fit=cover แทน) */
     iframe { position: fixed; inset: 0; display: block; border: 0; width: 100%; height: 100%; }
   </style>
 </head>
@@ -41,31 +19,16 @@
     allow="camera; clipboard-write"></iframe>
 
   <script>
-    /*
-      แอปเปลี่ยนหน้าเองไม่ได้เมื่อถูกฝัง — ลิงก์ทุกอันสั่ง "หน้าต่างบนสุด" ซึ่งคือ
-      หน้านี้ ผลคือทะลุออกไปที่ script.google.com แล้วแถบแจ้งเตือนกลับมา
-      หน้านี้จึงรับหน้าที่เปลี่ยน src ของ iframe ให้แทน
-
-      สองข้อความเท่านั้น:
-        {k2:'hello'} จากแอป -> ตอบ {k2:'wrapper'} กลับไป เพื่อให้แอปรู้ว่ามีหน้าห่อ
-                               อยู่จริง (ไม่ใช่การเดาจากจำนวนชั้น iframe ซึ่งแยก
-                               "เปิดตรง" กับ "ถูกฝัง" ไม่ออก)
-        {k2:'nav', url}      -> เปลี่ยนหน้า
-    */
     (function () {
       var frame = document.getElementById('app');
       var APP_PREFIX = 'https://script.google.com/macros/s/';
-      // โค้ดของแอปไม่ได้อยู่ใน iframe ลูกโดยตรง แต่อยู่ในชั้นหลานที่ GAS สร้าง
-      // ซ้อนอีกที (โดเมน n-xxxx.googleusercontent.com) การเทียบว่า
-      // e.source === frame.contentWindow จึงไม่ผ่าน — ต้องเช็คที่โดเมนผู้ส่งแทน
       var OK_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(script\.google\.com|googleusercontent\.com)$/;
-
       window.addEventListener('message', function (e) {
         var d = e.data;
-        if (!d || typeof d !== 'object') return;              // GAS เองก็ส่ง string มา
-        if (!OK_ORIGIN.test(e.origin)) return;                 // รับเฉพาะเฟรมที่ Google เสิร์ฟ
+        if (!d || typeof d !== 'object') return;
+        if (!OK_ORIGIN.test(e.origin)) return;
         if (d.k2 === 'hello') {
-          window.__k2handshake = true;                         // ไว้ตรวจตอนแก้ปัญหา
+          window.__k2handshake = true;
           e.source.postMessage({ k2: 'wrapper' }, '*');
         } else if (d.k2 === 'nav' && typeof d.url === 'string' && d.url.indexOf(APP_PREFIX) === 0) {
           frame.src = d.url;
