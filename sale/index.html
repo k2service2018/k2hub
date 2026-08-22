@@ -21,6 +21,18 @@
   <title>K2 Sale System</title>
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-title" content="K2 Sale">
+  <!-- ไอคอนตอนกด "เพิ่มลงหน้าจอโฮม" จาก Safari
+       ⚠️ ต้องอยู่ **ที่หน้านี้เท่านั้น** ใส่ในไฟล์ของแอปไม่มีผล — แอปรันอยู่ใน iframe
+          ของ googleusercontent.com ส่วน Safari อ่านไอคอนจากหน้าบนสุดซึ่งก็คือหน้านี้
+       ถ้าไม่มีบรรทัดนี้ iOS จะใช้ภาพหน้าจอของหน้าเว็บมาเป็นไอคอนแทน
+       ไฟล์ต้อง 180x180 และ**พื้นหลังทึบ** เพราะ iOS ปัดมุมมนเองและไม่รองรับพื้นหลังใส
+       (ไฟล์ปัจจุบัน: 180x180 RGB ไม่มีช่องอัลฟา ตรงตามนี้)
+
+       **ไม่ใส่ apple-mobile-web-app-capable="yes"** ทั้งที่โจทย์ขอมา — ตัวนี้ (พร้อมกับ
+       viewport-fit=cover และ sandbox) คือสิ่งที่ทำให้แถบบนของแอปกดไม่ได้บน iPhone
+       ตามที่บันทึกไว้ในหัวไฟล์นี้ ไอคอนกับชื่อบนหน้าโฮมได้ครบโดยไม่ต้องใช้มัน
+       ผลที่ต่างคือเปิดจากไอคอนแล้วยังเห็นแถบที่อยู่ของ Safari ซึ่งแลกกับการที่แอปกดได้ -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <!-- Drawn inline as a data: URI so there is no second file to upload and
        nothing to 404. Without this line the browser falls back to
        /favicon.ico at the domain root, which does not exist — hence the
