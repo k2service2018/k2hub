@@ -33,8 +33,8 @@
      * บนเบราว์เซอร์ในแอป LINE ไม่เคยมีอาการนี้ เพราะทุกค่าเท่ากันหมด (669) — จอเดียวกัน
      * แต่คนละเบราว์เซอร์ให้ผลคนละอย่าง จึงต้องวัดบนเครื่องจริง ไม่ใช่เดา
      */
-    html, body { margin: 0; padding: 0; background: #f4f6fb; overflow: hidden; height: 100%; height: 100dvh; }
-    iframe { display: block; border: 0; width: 100%; height: 100%; height: 100dvh; }
+    html, body { margin: 0; padding: 0; background: #f4f6fb; overflow: hidden; height: 100%; height: 100svh; }
+    iframe { display: block; border: 0; width: 100%; height: 100%; height: 100svh; }
   </style>
 </head>
 <body>
@@ -43,62 +43,34 @@
     title="K2 Sale System"
     allow="clipboard-write"></iframe>
 
-  <!-- เครื่องมือวัดชั่วคราว เปิดเมื่อ URL ลงท้ายด้วย #diag เท่านั้น
-       ถอดออกเมื่อหาสาเหตุเจอแล้ว -->
   <script>
-  if (location.hash === '#diag') (function () {
+  /* ความสูงของเฟรมมาจาก **ค่าที่วัดได้** ไม่ใช่จากหน่วย CSS
+   *
+   * ⚠️ วัดจริงบน iPhone แล้ว: 100dvh คายค่าออกมาเป็น 659px ทั้งที่พื้นที่ที่มองเห็นจริง
+   *    (visualViewport.height) คือ 606px — หน่วย viewport ของ CSS จึงเชื่อไม่ได้ที่นี่
+   *    เฟรมสูงเกินจอ 53px ส่วนล่างของแอป (แถบเมนู) เลยตกขอบไป
+   *
+   * visualViewport.height คือพื้นที่ที่มองเห็นจริง ๆ หลังหักแถบของเบราว์เซอร์แล้ว
+   * ตั้งความสูงตามค่านี้ตรง ๆ จึงพอดีเสมอ ไม่ว่าแถบ URL จะโผล่หรือหุบ
+   *
+   * ตั้งให้ html และ body ด้วย ไม่ใช่แค่ iframe — ถ้าหน้ายังสูงกว่าที่มองเห็น
+   * จะมีที่ให้เลื่อน แล้ว Safari จะเลื่อนเองจนส่วนบนของแอปถูกบัง (อาการเดิม)
+   *
+   * เบราว์เซอร์ที่ไม่มี visualViewport ตกไปใช้ 100svh ใน CSS ข้างบน
+   */
+  (function () {
+    var vv = window.visualViewport;
+    if (!vv) return;
     var frame = document.querySelector('iframe');
-
-    // แถบแดงสูง 28px ทาบขอบบนของ iframe พอดี
-    // มองไม่เห็นแถบนี้ = ขอบบนของเฟรมอยู่นอกพื้นที่ที่มองเห็น (มีอะไรบังอยู่)
-    var band = document.createElement('div');
-    band.style.cssText = 'position:absolute;left:0;right:0;height:28px;z-index:9;' +
-      'background:#dc2626;color:#fff;font:bold 13px/28px monospace;text-align:center;' +
-      'pointer-events:none';
-    band.textContent = 'ขอบบนของเฟรม';
-    document.body.appendChild(band);
-
-    var box = document.createElement('pre');
-    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10;margin:0;' +
-      'background:#0f172a;color:#e2e8f0;font:11px/1.5 monospace;padding:8px 10px;' +
-      'white-space:pre-wrap;pointer-events:none';
-    document.body.appendChild(box);
-
-    function num(v) { return (v === undefined || v === null) ? '-' : Math.round(v); }
-
-    function read() {
-      var r = frame.getBoundingClientRect();
-      var cs = getComputedStyle(frame);
-      band.style.top = (window.scrollY + r.top) + 'px';
-
-      var vv = window.visualViewport;
-      box.textContent =
-        // สองบรรทัดนี้บอกว่ากำลังดูหน้าเวอร์ชันไหนอยู่ ถ้าไม่ใช่ B แปลว่าเบราว์เซอร์
-        // ยังใช้หน้าเก่าที่แคชไว้ ไม่ใช่ว่าโค้ดใหม่ไม่ได้ผล
-        'BUILD                 B (2026-08-22 dvh)\n' +
-        'iframe position       ' + cs.position + '  <= ต้องเป็น static\n' +
-        'iframe height (css)   ' + cs.height + '\n' +
-        '----\n' +
-        'window.innerHeight    ' + num(window.innerHeight) + '\n' +
-        'doc.clientHeight      ' + num(document.documentElement.clientHeight) + '\n' +
-        'visualViewport.height ' + num(vv && vv.height) + '\n' +
-        'visualViewport.top    ' + num(vv && vv.offsetTop) + '  <= ไม่ใช่ 0 แปลว่ามีแถบบังอยู่\n' +
-        'visualViewport.pageTop ' + num(vv && vv.pageTop) + '\n' +
-        'window.scrollY        ' + num(window.scrollY) + '\n' +
-        'iframe rect.top       ' + num(r.top) + '  <= ไม่ใช่ 0 แปลว่าเฟรมไม่ได้เริ่มที่ขอบบน\n' +
-        'iframe rect.height    ' + num(r.height) + '\n' +
-        'iframe offsetHeight   ' + num(frame.offsetHeight) + '\n' +
-        'body.scrollHeight     ' + num(document.body.scrollHeight);
+    function fit() {
+      var h = Math.round(vv.height) + 'px';
+      document.documentElement.style.height = h;
+      document.body.style.height = h;
+      frame.style.height = h;
     }
-
-    read();
-    addEventListener('resize', read);
-    addEventListener('scroll', read);
-    if (window.visualViewport) {
-      visualViewport.addEventListener('resize', read);
-      visualViewport.addEventListener('scroll', read);
-    }
-    setInterval(read, 500);
+    fit();
+    vv.addEventListener('resize', fit);
+    addEventListener('orientationchange', fit);
   }());
   </script>
 </body>
