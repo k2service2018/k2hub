@@ -18,5 +18,57 @@
     src="https://script.google.com/macros/s/AKfycbycxVaAS_DVU0hEJn1Mnq-B-QMp069E5yNknNM3CbwAHdwiaCl2nde94ribtdQk6VtRsQ/exec"
     title="K2 Sale System"
     allow="clipboard-write"></iframe>
+
+  <!-- เครื่องมือวัดชั่วคราว เปิดเมื่อ URL ลงท้ายด้วย #diag เท่านั้น
+       ถอดออกเมื่อหาสาเหตุเจอแล้ว -->
+  <script>
+  if (location.hash === '#diag') (function () {
+    var frame = document.querySelector('iframe');
+
+    // แถบแดงสูง 28px ทาบขอบบนของ iframe พอดี
+    // มองไม่เห็นแถบนี้ = ขอบบนของเฟรมอยู่นอกพื้นที่ที่มองเห็น (มีอะไรบังอยู่)
+    var band = document.createElement('div');
+    band.style.cssText = 'position:absolute;left:0;right:0;height:28px;z-index:9;' +
+      'background:#dc2626;color:#fff;font:bold 13px/28px monospace;text-align:center;' +
+      'pointer-events:none';
+    band.textContent = 'ขอบบนของเฟรม';
+    document.body.appendChild(band);
+
+    var box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10;margin:0;' +
+      'background:#0f172a;color:#e2e8f0;font:11px/1.5 monospace;padding:8px 10px;' +
+      'white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(box);
+
+    function num(v) { return (v === undefined || v === null) ? '-' : Math.round(v); }
+
+    function read() {
+      var r = frame.getBoundingClientRect();
+      band.style.top = (window.scrollY + r.top) + 'px';
+
+      var vv = window.visualViewport;
+      box.textContent =
+        'window.innerHeight    ' + num(window.innerHeight) + '\n' +
+        'doc.clientHeight      ' + num(document.documentElement.clientHeight) + '\n' +
+        'visualViewport.height ' + num(vv && vv.height) + '\n' +
+        'visualViewport.top    ' + num(vv && vv.offsetTop) + '  <= ไม่ใช่ 0 แปลว่ามีแถบบังอยู่\n' +
+        'visualViewport.pageTop ' + num(vv && vv.pageTop) + '\n' +
+        'window.scrollY        ' + num(window.scrollY) + '\n' +
+        'iframe rect.top       ' + num(r.top) + '  <= ไม่ใช่ 0 แปลว่าเฟรมไม่ได้เริ่มที่ขอบบน\n' +
+        'iframe rect.height    ' + num(r.height) + '\n' +
+        'iframe offsetHeight   ' + num(frame.offsetHeight) + '\n' +
+        'body.scrollHeight     ' + num(document.body.scrollHeight);
+    }
+
+    read();
+    addEventListener('resize', read);
+    addEventListener('scroll', read);
+    if (window.visualViewport) {
+      visualViewport.addEventListener('resize', read);
+      visualViewport.addEventListener('scroll', read);
+    }
+    setInterval(read, 500);
+  }());
+  </script>
 </body>
 </html>
