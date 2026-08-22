@@ -87,7 +87,9 @@ measuring overlay")
 
 ### สถานะของแต่ละหน้า (2026-08-22)
 - **sale** — แก้แล้ว ยืนยันบน iPhone จริงแล้ว
-- **service · tender · expense** — ยังเป็น `position:fixed; inset:0; height:100%` แบบเดิม
+- **service** — แก้แล้ว ยืนยันบน iPhone จริงแล้ว จับได้สองสถานะ ค่า rect.top เป็น 0 ทั้งคู่
+  (แถบ URL กาง: vv.height 618 · offsetTop 41 — แถบหุบ: vv.height 659 · offsetTop 0)
+- **tender · expense** — ยังเป็น `position:fixed; inset:0; height:100%` แบบเดิม
   **น่าจะมีอาการเดียวกัน แต่ยังไม่ได้วัด** ถ้าจะแก้ ให้วัดทีละตัวก่อนตามวิธีข้างบน
 
 ---
