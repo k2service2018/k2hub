@@ -19,6 +19,17 @@
     #scanWrap { position: fixed; inset: 0; z-index: 9999; background: #000; display: none; }
     #scanReader { width: 100%; height: 100%; }
     #scanReader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+    /* Aiming guide only — the decoder now reads the whole frame, so nothing
+       outside these corners is lost. Wide enough for the bar strip on a UPS,
+       tall enough for a square QR. */
+    #scanGuide { position: fixed; left: 6%; right: 6%; top: 50%; transform: translateY(-50%);
+      aspect-ratio: 3 / 2; pointer-events: none; z-index: 10000; }
+    #scanGuide i { position: absolute; width: 34px; height: 34px; border: 4px solid #fff;
+      border-radius: 3px; }
+    #scanGuide i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+    #scanGuide i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+    #scanGuide i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+    #scanGuide i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
     #scanBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px 30px;
       background: linear-gradient(transparent, rgba(0,0,0,.75)); text-align: center; z-index: 10000; }
     #scanBar button { min-height: 46px; padding: 0 26px; font-size: 15px; font-weight: 600;
@@ -36,8 +47,9 @@
     allow="camera; clipboard-write"></iframe>
 
   <div id="scanWrap">
-    <div id="scanMsg">เล็ง QR บนป้ายเครื่องให้อยู่ในกรอบ</div>
+    <div id="scanMsg">เล็ง QR หรือบาร์โค้ดให้อยู่ในกรอบ</div>
     <div id="scanReader"></div>
+    <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
     <div id="scanBar"><button type="button" id="scanClose">ปิดกล้อง</button></div>
   </div>
 
@@ -119,13 +131,12 @@
       inst.start(
         { facingMode: 'environment' },
         {
-          fps: 10,
-          // Square, because every K2 serial label is a square QR: a landscape
-          // box crops the top and bottom off the code and nothing ever reads.
-          qrbox: function (w, h) {
-            var edge = Math.floor(Math.min(w, h) * 0.72);
-            return { width: edge, height: edge };
-          }
+          fps: 10
+          // No qrbox on purpose: it is a CROP, and whatever falls outside it is
+          // thrown away. A square crop suits the QR on a K2 serial label and
+          // cuts the ends off the long bar strip on a UPS; a landscape one does
+          // the opposite. Decoding the whole frame serves both, and the guide
+          // drawn over the video is now only a hint about where to aim.
         },
         function (text) {
           var value = String(text || '').trim();
@@ -133,7 +144,21 @@
         },
         function () { /* a miss per frame is normal */ }
       ).then(function () {
-        document.getElementById('scanMsg').textContent = 'เล็ง QR บนป้ายเครื่องให้อยู่ในกรอบ';
+        document.getElementById('scanMsg').textContent = 'เล็ง QR หรือบาร์โค้ดให้อยู่ในกรอบ';
+        /* Ask for a sharper stream now that the camera is running.
+
+           This is the whole difference for the bar strip on a UPS. Left to
+           itself Safari hands over about 720p, where the narrow bars land two
+           pixels wide and no decoder can separate them — measured: the same
+           strip that never read at 720p reads in 200ms at 1080p. A QR is coarse
+           enough not to care, which is why only the barcodes were failing.
+
+           Applied here rather than in start()'s constraints because passing
+           width/height there makes html5-qrcode reject the start outright, and
+           then nothing scans at all. A camera that cannot go higher simply
+           keeps what it has. */
+        inst.applyVideoConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } })
+          .catch(function () { /* keep whatever the camera gives */ });
       }).catch(function () {
         // Even here the camera can be refused — in an in-app browser, or if
         // the user has said no. Tell the app so it can offer a photo instead.
