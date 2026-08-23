@@ -36,6 +36,11 @@
     #scanBar button { min-height: 46px; padding: 0 22px; font-size: 15px; font-weight: 600;
       border: 0; border-radius: 10px; background: #fff; color: #333; }
     #scanBar #scanPhoto { background: #4f6ef7; color: #fff; }
+    /* The camera's real resolution, on screen. A 1D bar strip lives or dies on
+       how many pixels its narrow bars get, and this is the only way to know
+       what the phone actually handed over rather than what we asked for. */
+    #scanInfo { position: fixed; left: 0; right: 0; top: 46px; text-align: center;
+      color: #b9c0d0; font: 12px/1.5 sans-serif; z-index: 10000; }
     #scanMsg { position: fixed; left: 0; right: 0; top: 0; padding: 14px 16px;
       background: rgba(0,0,0,.6); color: #fff; font: 14px/1.5 sans-serif;
       text-align: center; z-index: 10000; }
@@ -49,9 +54,10 @@
     allow="camera; clipboard-write"></iframe>
 
   <div id="scanWrap">
-    <div id="scanMsg">เล็ง QR ให้อยู่ในกรอบ · บาร์โค้ดแท่งให้กด ถ่ายรูป</div>
+    <div id="scanMsg">QR: เล็งในกรอบ · บาร์โค้ดแท่ง: เข้าใกล้ให้เต็มความกว้าง ถือนิ่ง</div>
     <div id="scanReader"></div>
     <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
+    <div id="scanInfo"></div>
     <div id="scanBar">
       <button type="button" id="scanPhoto">📷 ถ่ายรูป</button>
       <button type="button" id="scanClose">ปิดกล้อง</button>
@@ -106,6 +112,7 @@
     /* The scanner itself. Kept in this page rather than in the app because
        only this page is allowed to open a camera — see the note in the CSS. */
     var scanInst = null;
+    var scanResTimer = null;
     var scanAsker = null;
 
     function scanTell(msg) {
@@ -117,6 +124,9 @@
       wrap.style.display = 'none';
       var inst = scanInst;
       scanInst = null;
+      if (scanResTimer) { clearInterval(scanResTimer); scanResTimer = null; }
+      var info = document.getElementById('scanInfo');
+      if (info) info.textContent = '';
       if (msg) scanTell(msg);
       scanAsker = null;
       if (inst) { inst.stop().then(function () { inst.clear(); }).catch(function () {}); }
@@ -150,7 +160,7 @@
         },
         function () { /* a miss per frame is normal */ }
       ).then(function () {
-        document.getElementById('scanMsg').textContent = 'เล็ง QR ให้อยู่ในกรอบ · บาร์โค้ดแท่งให้กด ถ่ายรูป';
+        document.getElementById('scanMsg').textContent = 'QR: เล็งในกรอบ · บาร์โค้ดแท่ง: เข้าใกล้ให้เต็มความกว้าง ถือนิ่ง';
         /* Ask for a sharper stream now that the camera is running.
 
            This is the whole difference for the bar strip on a UPS. Left to
@@ -165,6 +175,17 @@
            keeps what it has. */
         inst.applyVideoConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } })
           .catch(function () { /* keep whatever the camera gives */ });
+
+        // Show what we ended up with. The request above is a wish, not an order.
+        if (scanResTimer) clearInterval(scanResTimer);
+        scanResTimer = setInterval(function () {
+          var v = document.querySelector('#scanReader video');
+          var el = document.getElementById('scanInfo');
+          if (!v || !el) return;
+          el.textContent = v.videoWidth
+            ? ('กล้อง ' + v.videoWidth + ' x ' + v.videoHeight)
+            : 'ยังไม่มีภาพจากกล้อง';
+        }, 700);
       }).catch(function () {
         // Even here the camera can be refused — in an in-app browser, or if
         // the user has said no. Tell the app so it can offer a photo instead.
