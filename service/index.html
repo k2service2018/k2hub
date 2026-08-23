@@ -32,8 +32,10 @@
     #scanGuide i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
     #scanBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px 30px;
       background: linear-gradient(transparent, rgba(0,0,0,.75)); text-align: center; z-index: 10000; }
-    #scanBar button { min-height: 46px; padding: 0 26px; font-size: 15px; font-weight: 600;
+    #scanBar { display: flex; gap: 10px; justify-content: center; }
+    #scanBar button { min-height: 46px; padding: 0 22px; font-size: 15px; font-weight: 600;
       border: 0; border-radius: 10px; background: #fff; color: #333; }
+    #scanBar #scanPhoto { background: #4f6ef7; color: #fff; }
     #scanMsg { position: fixed; left: 0; right: 0; top: 0; padding: 14px 16px;
       background: rgba(0,0,0,.6); color: #fff; font: 14px/1.5 sans-serif;
       text-align: center; z-index: 10000; }
@@ -47,10 +49,14 @@
     allow="camera; clipboard-write"></iframe>
 
   <div id="scanWrap">
-    <div id="scanMsg">เล็ง QR หรือบาร์โค้ดให้อยู่ในกรอบ</div>
+    <div id="scanMsg">เล็ง QR ให้อยู่ในกรอบ · บาร์โค้ดแท่งให้กด ถ่ายรูป</div>
     <div id="scanReader"></div>
     <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
-    <div id="scanBar"><button type="button" id="scanClose">ปิดกล้อง</button></div>
+    <div id="scanBar">
+      <button type="button" id="scanPhoto">📷 ถ่ายรูป</button>
+      <button type="button" id="scanClose">ปิดกล้อง</button>
+    </div>
+    <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none">
   </div>
 
   <script>
@@ -144,7 +150,7 @@
         },
         function () { /* a miss per frame is normal */ }
       ).then(function () {
-        document.getElementById('scanMsg').textContent = 'เล็ง QR หรือบาร์โค้ดให้อยู่ในกรอบ';
+        document.getElementById('scanMsg').textContent = 'เล็ง QR ให้อยู่ในกรอบ · บาร์โค้ดแท่งให้กด ถ่ายรูป';
         /* Ask for a sharper stream now that the camera is running.
 
            This is the whole difference for the bar strip on a UPS. Left to
@@ -169,6 +175,67 @@
 
     document.getElementById('scanClose').addEventListener('click', function () {
       closeScanner({ k2: 'scanCancel' });
+    });
+
+    /* Reading a code out of a still photo, as a second route beside the live
+       one. It exists because a 1D bar strip — the kind on a UPS — reads from a
+       photo but not, so far, from the live feed: the bars come through the
+       video too thin to separate, while a QR is coarse enough to survive.
+
+       The capture happens HERE rather than down in the app because the picker
+       needs a real user gesture, and a gesture does not survive a postMessage
+       hop into another frame. */
+    document.getElementById('scanPhoto').addEventListener('click', function () {
+      document.getElementById('scanFile').click();
+    });
+
+    document.getElementById('scanFile').addEventListener('change', function () {
+      var input = this;
+      var file = input.files && input.files[0];
+      input.value = '';                       // let the same shot be retaken
+      if (!file) return;
+      var msg = document.getElementById('scanMsg');
+      msg.textContent = 'กำลังอ่านรูป...';
+
+      /* iOS caps a canvas near 16.7M pixels and a modern iPhone shoots 24-48MP;
+         over the cap the canvas comes back blank rather than failing, so the
+         decoder would be handed an empty image. Shrink first. */
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var scale = Math.min(1, 1600 / Math.max(w, h, 1));
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(w * scale));
+        cv.height = Math.max(1, Math.round(h * scale));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        msg.textContent = 'กำลังอ่านรูป ' + w + 'x' + h + '...';
+        cv.toBlob(function (blob) {
+          var holder = document.createElement('div');
+          holder.id = 'photoScan_' + Date.now();
+          holder.style.display = 'none';
+          document.body.appendChild(holder);
+          var drop = function () { if (holder.parentNode) holder.parentNode.removeChild(holder); };
+          new Html5Qrcode(holder.id)
+            .scanFile(new File([blob], 'scan.jpg', { type: 'image/jpeg' }), false)
+            .then(function (text) {
+              drop();
+              var value = String(text || '').trim();
+              if (value) closeScanner({ k2: 'scanned', text: value });
+              else msg.textContent = 'ไม่พบรหัสในรูปนี้ ลองใหม่';
+            })
+            .catch(function () {
+              drop();
+              msg.textContent = 'อ่านไม่สำเร็จ (รูป ' + w + 'x' + h + ') — ถ่ายให้รหัสเต็มกรอบและชัด';
+            });
+        }, 'image/jpeg', 0.92);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        msg.textContent = 'เปิดรูปไม่ได้ ลองใหม่';
+      };
+      img.src = url;
     });
   </script>
 </body>
