@@ -42,6 +42,13 @@
     #scanGuide i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
     #scanBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px 30px;
       background: linear-gradient(transparent, rgba(0,0,0,.75)); text-align: center; z-index: 10000; }
+    /* The strip the decoder is actually reading, shown as it is read.
+       Ten rounds of this were spent reasoning about an image nobody had seen;
+       a screenshot of this panel is worth more than any of them. */
+    #scanPeek { position: fixed; left: 8px; bottom: 96px; width: 46%; z-index: 10000;
+      border: 2px solid rgba(255,255,255,.85); border-radius: 6px; background: #000; }
+    #scanPeekLabel { position: fixed; left: 8px; bottom: 78px; z-index: 10000;
+      color: #cfd4e0; font: 11px/1.4 sans-serif; }
     #scanBar { display: flex; gap: 10px; justify-content: center; }
     #scanBar button { min-height: 46px; padding: 0 22px; font-size: 15px; font-weight: 600;
       border: 0; border-radius: 10px; background: #fff; color: #333; }
@@ -68,6 +75,8 @@
     <div id="scanReader"></div>
     <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
     <div id="scanInfo"></div>
+    <img id="scanPeek" alt="">
+    <div id="scanPeekLabel">ภาพที่ตัวอ่านได้รับ</div>
     <div id="scanBar">
       <button type="button" id="scanPhoto">📷 ถ่ายรูป</button>
       <button type="button" id="scanClose">ปิดกล้อง</button>
@@ -135,6 +144,7 @@
        "no code here" and "the picture never reached the decoder" look
        identical from the outside and need opposite fixes. */
     var bandLastErr = '';
+    var peekAt = 0;
 
     /* The extra decoder is built fresh for each time the camera is opened and
        discarded when it closes. Keeping one alive across sessions looked
@@ -164,6 +174,8 @@
       dropBandReader();
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
+      var peek = document.getElementById('scanPeek');
+      if (peek) peek.removeAttribute('src');
       if (msg) scanTell(msg);
       scanAsker = null;
       if (inst) { inst.stop().then(function () { inst.clear(); }).catch(function () {}); }
@@ -300,13 +312,22 @@
            over a second per pass, which on a hand-held camera is barely one
            chance a second to catch a steady, focused frame. Cheaper passes mean
            several chances a second instead. */
-        var outH = Math.min(bandH, 480);
+        /* No squeeze any more. It was there to make passes cheap, but at ~150ms
+           a pass there is room, and compressing the band can only cost the
+           decoder detail — including shearing a hand-held tilt. */
+        var outH = bandH;
         cv.width = vw; cv.height = outH;
         cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, outH);
 
         /* PNG, not JPEG. The narrow bars of a 1D code are a few pixels wide and
            JPEG smears exactly that detail — the one thing the decoder needs.
            A QR never cared, which is part of why only barcodes were failing. */
+        if (Date.now() - peekAt > 900) {
+          peekAt = Date.now();
+          var peek = document.getElementById('scanPeek');
+          if (peek) peek.src = cv.toDataURL('image/jpeg', 0.6);
+        }
+
         cv.toBlob(function (blob) {
           if (!blob || !scanInst) { busy = false; return; }
           var reader = bandReader;
