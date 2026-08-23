@@ -42,13 +42,6 @@
     #scanGuide i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
     #scanBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px 30px;
       background: linear-gradient(transparent, rgba(0,0,0,.75)); text-align: center; z-index: 10000; }
-    /* The strip the decoder is actually reading, shown as it is read.
-       Ten rounds of this were spent reasoning about an image nobody had seen;
-       a screenshot of this panel is worth more than any of them. */
-    #scanPeek { position: fixed; left: 8px; bottom: 96px; width: 46%; z-index: 10000;
-      border: 2px solid rgba(255,255,255,.85); border-radius: 6px; background: #000; }
-    #scanPeekLabel { position: fixed; left: 8px; bottom: 78px; z-index: 10000;
-      color: #cfd4e0; font: 11px/1.4 sans-serif; }
     #scanBar { display: flex; gap: 10px; justify-content: center; }
     #scanBar button { min-height: 46px; padding: 0 22px; font-size: 15px; font-weight: 600;
       border: 0; border-radius: 10px; background: #fff; color: #333; }
@@ -75,8 +68,6 @@
     <div id="scanReader"></div>
     <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
     <div id="scanInfo"></div>
-    <img id="scanPeek" alt="">
-    <div id="scanPeekLabel">ภาพที่ตัวอ่านได้รับ</div>
     <div id="scanBar">
       <button type="button" id="scanPhoto">📷 ถ่ายรูป</button>
       <button type="button" id="scanClose">ปิดกล้อง</button>
@@ -134,14 +125,10 @@
     var scanResTimer = null;
     var scanBandTimer = null;
     var bandPack = null;
-    /* Counters, shown on screen. Several rounds of this hunt were spent fixing
-       things that were never running; a number that stays at zero says so in
-       one glance. */
-    var bandTries = 0, bandSlowest = 0, bandWay = '';
-    /* A miss and a broken picture look identical from the outside and need
-       opposite fixes, so the reason is spelled out rather than counted. */
-    var bandLastErr = '';
-    var peekAt = 0;
+    /* The one thing worth putting on screen: the decoder failed to load, so
+       no amount of aiming will ever work. A pass that simply finds no code is
+       the ordinary case and says nothing. */
+    var bandLoadErr = '';
 
     /* ZXing on its own, fetched the first time the camera opens rather than
        with the page: the wrapper is otherwise tiny and most visits never scan
@@ -213,8 +200,6 @@
       dropBandReader();
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
-      var peek = document.getElementById('scanPeek');
-      if (peek) peek.removeAttribute('src');
       if (msg) scanTell(msg);
       scanAsker = null;
       if (inst) { inst.stop().then(function () { inst.clear(); }).catch(function () {}); }
@@ -264,19 +249,18 @@
         inst.applyVideoConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } })
           .catch(function () { /* keep whatever the camera gives */ });
 
-        // Show what we ended up with. The request above is a wish, not an order.
+        /* Only a real problem gets said out loud. The per-pass counters that
+           lived here were scaffolding for the hunt that fixed 1D scanning —
+           useful while the numbers were the only evidence, and just noise once
+           it works: "ไม่พบรหัส" flashing over the picture while someone is
+           still lining the barcode up reads as a failure, not as progress. */
         if (scanResTimer) clearInterval(scanResTimer);
         scanResTimer = setInterval(function () {
           var v = document.querySelector('#scanReader video');
           var el = document.getElementById('scanInfo');
           if (!v || !el) return;
-          el.textContent = (v.videoWidth
-            ? ('กล้อง ' + v.videoWidth + ' x ' + v.videoHeight)
-            : 'ยังไม่มีภาพจากกล้อง') +
-            ' · รอบ ' + bandTries +
-            (bandWay ? (' · ' + bandWay) : '') +
-            (bandSlowest ? (' · ' + bandSlowest + 'ms') : '') +
-            (bandLastErr ? (' · ' + bandLastErr) : '');
+          el.textContent = !v.videoWidth ? 'ยังไม่มีภาพจากกล้อง'
+            : (bandLoadErr || '');
         }, 700);
 
         /* Keep the lens hunting. Held close to a barcode the camera can settle
@@ -326,8 +310,7 @@
     function startBandPass() {
       if (scanBandTimer) clearTimeout(scanBandTimer);
       dropBandReader();
-      bandTries = 0; bandSlowest = 0; bandWay = '';
-      bandLastErr = 'กำลังโหลดตัวอ่าน...';
+      bandLoadErr = 'กำลังโหลดตัวอ่าน...';
 
       var Z = null;
       zxReady().then(function (z) {
@@ -340,9 +323,9 @@
           z.BarcodeFormat.CODE_93, z.BarcodeFormat.ITF, z.BarcodeFormat.CODABAR
         ]);
         bandPack = { reader: new z.MultiFormatOneDReader(h), hints: h };
-        bandLastErr = '';
+        bandLoadErr = '';
       }).catch(function (e) {
-        bandLastErr = String((e && e.message) || e).slice(0, 42);
+        bandLoadErr = String((e && e.message) || e).slice(0, 42);
       });
 
       function read(cv) {
@@ -371,17 +354,13 @@
         var v = document.querySelector('#scanReader video');
         if (!v || !v.videoWidth || !Z || !bandPack) return again();
 
-        var startedAt = Date.now();
-        bandTries++;
         var vw = v.videoWidth, vh = v.videoHeight;
         var bandH = Math.max(1, Math.round(vh * 0.5));
         cv.width = vw; cv.height = bandH;
         cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH,
           0, 0, vw, bandH);
 
-        var shown = cv;
         var hit = read(cv);
-        if (hit) bandWay = 'ปกติ';
 
         /* A second look at the same frame with the contrast pulled open. It
            costs about as much again, so it runs on every other pass — it is
@@ -391,18 +370,7 @@
           cs.width = vw; cs.height = bandH;
           cs.getContext('2d').drawImage(cv, 0, 0);
           stretchGrey(cs);
-          shown = cs;
           hit = read(cs);
-          if (hit) bandWay = 'คอนทราสต์';
-        }
-
-        bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
-        if (!hit) bandLastErr = 'ไม่พบรหัส';
-
-        if (Date.now() - peekAt > 900) {
-          peekAt = Date.now();
-          var peek = document.getElementById('scanPeek');
-          if (peek) peek.src = shown.toDataURL('image/jpeg', 0.6);
         }
 
         if (hit && scanInst) return closeScanner({ k2: 'scanned', text: hit });
