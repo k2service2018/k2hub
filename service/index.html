@@ -114,6 +114,21 @@
     var scanInst = null;
     var scanResTimer = null;
     var scanBandTimer = null;
+    var bandReader = null;
+    var bandHolderId = '';
+
+    /* The extra decoder is built fresh for each time the camera is opened and
+       discarded when it closes. Keeping one alive across sessions looked
+       tidier and was the cause of the strangest symptom in this whole hunt:
+       the first barcode of a session read, and every one after it failed. */
+    function dropBandReader() {
+      bandReader = null;
+      if (bandHolderId) {
+        var old = document.getElementById(bandHolderId);
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        bandHolderId = '';
+      }
+    }
     var scanAsker = null;
 
     function scanTell(msg) {
@@ -127,6 +142,7 @@
       scanInst = null;
       if (scanResTimer) { clearInterval(scanResTimer); scanResTimer = null; }
       if (scanBandTimer) { clearInterval(scanBandTimer); scanBandTimer = null; }
+      dropBandReader();
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
       if (msg) scanTell(msg);
@@ -189,6 +205,21 @@
             : 'ยังไม่มีภาพจากกล้อง';
         }, 700);
 
+        /* Keep the lens hunting. Held close to a barcode the camera can settle
+           on the wrong distance and simply stay there — the bars go soft and no
+           amount of resolution helps. Asked of the track directly because
+           html5-qrcode's own constraint call rejects anything it does not
+           recognise. A camera without the control ignores this. */
+        try {
+          var vEl = document.querySelector('#scanReader video');
+          var track = vEl && vEl.srcObject && vEl.srcObject.getVideoTracks
+            ? vEl.srcObject.getVideoTracks()[0] : null;
+          if (track && track.applyConstraints) {
+            track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+              .catch(function () { /* not supported here */ });
+          }
+        } catch (e) { /* not supported here */ }
+
         startBandPass();
       }).catch(function () {
         // Even here the camera can be refused — in an in-app browser, or if
@@ -211,34 +242,49 @@
        code first closes the scanner. */
     function startBandPass() {
       if (scanBandTimer) clearInterval(scanBandTimer);
+
+      /* One decoder, one canvas, one holder — reused for every pass.
+         Building a fresh Html5Qrcode two or three times a second meant dozens
+         of decoders and their ZXing readers piling up inside a single scan,
+         and the reads got rarer the longer the camera stayed open: it would
+         catch a barcode once and then never again. */
+      dropBandReader();
+      var holder = document.createElement('div');
+      holder.id = 'bandHolder_' + Date.now();
+      holder.style.display = 'none';
+      document.body.appendChild(holder);
+      bandHolderId = holder.id;
+      bandReader = new Html5Qrcode(holder.id);
+      var cv = document.createElement('canvas');
       var busy = false;
+
       scanBandTimer = setInterval(function () {
         if (busy || !scanInst) return;
         var v = document.querySelector('#scanReader video');
         if (!v || !v.videoWidth) return;
         busy = true;
+
         var vw = v.videoWidth, vh = v.videoHeight;
         var bandH = Math.max(1, Math.round(vh * 0.5));
-        var cv = document.createElement('canvas');
         cv.width = vw; cv.height = bandH;
         cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, bandH);
+
+        /* PNG, not JPEG. The narrow bars of a 1D code are a few pixels wide and
+           JPEG smears exactly that detail — the one thing the decoder needs.
+           A QR never cared, which is part of why only barcodes were failing. */
         cv.toBlob(function (blob) {
           if (!blob || !scanInst) { busy = false; return; }
-          var holder = document.createElement('div');
-          holder.id = 'bandScan_' + Date.now();
-          holder.style.display = 'none';
-          document.body.appendChild(holder);
-          var drop = function () { if (holder.parentNode) holder.parentNode.removeChild(holder); };
-          new Html5Qrcode(holder.id)
-            .scanFile(new File([blob], 'band.jpg', { type: 'image/jpeg' }), false)
+          var reader = bandReader;
+          if (!reader) { busy = false; return; }
+          reader.scanFile(new File([blob], 'band.png', { type: 'image/png' }), false)
             .then(function (text) {
-              drop(); busy = false;
+              busy = false;
               var value = String(text || '').trim();
               if (value && scanInst) closeScanner({ k2: 'scanned', text: value });
             })
-            .catch(function () { drop(); busy = false; });
-        }, 'image/jpeg', 0.85);
-      }, 400);
+            .catch(function () { busy = false; });
+        }, 'image/png');
+      }, 300);
     }
 
     document.getElementById('scanClose').addEventListener('click', function () {
