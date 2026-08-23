@@ -113,6 +113,7 @@
        only this page is allowed to open a camera — see the note in the CSS. */
     var scanInst = null;
     var scanResTimer = null;
+    var scanBandTimer = null;
     var scanAsker = null;
 
     function scanTell(msg) {
@@ -125,6 +126,7 @@
       var inst = scanInst;
       scanInst = null;
       if (scanResTimer) { clearInterval(scanResTimer); scanResTimer = null; }
+      if (scanBandTimer) { clearInterval(scanBandTimer); scanBandTimer = null; }
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
       if (msg) scanTell(msg);
@@ -186,12 +188,57 @@
             ? ('กล้อง ' + v.videoWidth + ' x ' + v.videoHeight)
             : 'ยังไม่มีภาพจากกล้อง';
         }, 700);
+
+        startBandPass();
       }).catch(function () {
         // Even here the camera can be refused — in an in-app browser, or if
         // the user has said no. Tell the app so it can offer a photo instead.
         scanInst = null;
         closeScanner({ k2: 'scanFail' });
       });
+    }
+
+    /* A second pass over the same picture, at the camera's real resolution.
+       html5-qrcode's own loop decodes from a canvas the size of the video
+       ELEMENT — measured at 568px wide while the camera was sending 1080, and
+       nearer 390 on a phone. A QR survives that; the narrow bars of a 1D
+       barcode do not, which is exactly the split we kept seeing: QR reads, the
+       strip on a UPS never does.
+
+       So this grabs a band across the middle of the frame at full width and
+       hands it to scanFile, which is the path already proven to read Code 39
+       and EAN. One at a time, a few times a second, and whichever pass finds a
+       code first closes the scanner. */
+    function startBandPass() {
+      if (scanBandTimer) clearInterval(scanBandTimer);
+      var busy = false;
+      scanBandTimer = setInterval(function () {
+        if (busy || !scanInst) return;
+        var v = document.querySelector('#scanReader video');
+        if (!v || !v.videoWidth) return;
+        busy = true;
+        var vw = v.videoWidth, vh = v.videoHeight;
+        var bandH = Math.max(1, Math.round(vh * 0.5));
+        var cv = document.createElement('canvas');
+        cv.width = vw; cv.height = bandH;
+        cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, bandH);
+        cv.toBlob(function (blob) {
+          if (!blob || !scanInst) { busy = false; return; }
+          var holder = document.createElement('div');
+          holder.id = 'bandScan_' + Date.now();
+          holder.style.display = 'none';
+          document.body.appendChild(holder);
+          var drop = function () { if (holder.parentNode) holder.parentNode.removeChild(holder); };
+          new Html5Qrcode(holder.id)
+            .scanFile(new File([blob], 'band.jpg', { type: 'image/jpeg' }), false)
+            .then(function (text) {
+              drop(); busy = false;
+              var value = String(text || '').trim();
+              if (value && scanInst) closeScanner({ k2: 'scanned', text: value });
+            })
+            .catch(function () { drop(); busy = false; });
+        }, 'image/jpeg', 0.85);
+      }, 400);
     }
 
     document.getElementById('scanClose').addEventListener('click', function () {
