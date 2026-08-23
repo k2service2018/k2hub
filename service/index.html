@@ -133,30 +133,69 @@
     var scanInst = null;
     var scanResTimer = null;
     var scanBandTimer = null;
-    var bandReader = null;
-    var bandHolderId = '';
+    var bandPack = null;
     /* Counters, shown on screen. Several rounds of this hunt were spent fixing
        things that were never running; a number that stays at zero says so in
        one glance. */
-    var bandTries = 0, bandDone = 0, bandSlowest = 0;
-    /* scanFile REJECTS when it simply finds nothing, which is the ordinary
-       case — so a count of failures says nothing on its own. The reason does:
-       "no code here" and "the picture never reached the decoder" look
-       identical from the outside and need opposite fixes. */
+    var bandTries = 0, bandSlowest = 0, bandWay = '';
+    /* A miss and a broken picture look identical from the outside and need
+       opposite fixes, so the reason is spelled out rather than counted. */
     var bandLastErr = '';
     var peekAt = 0;
 
-    /* The extra decoder is built fresh for each time the camera is opened and
-       discarded when it closes. Keeping one alive across sessions looked
-       tidier and was the cause of the strangest symptom in this whole hunt:
-       the first barcode of a session read, and every one after it failed. */
-    function dropBandReader() {
-      bandReader = null;
-      if (bandHolderId) {
-        var old = document.getElementById(bandHolderId);
-        if (old && old.parentNode) old.parentNode.removeChild(old);
-        bandHolderId = '';
+    /* ZXing on its own, fetched the first time the camera opens rather than
+       with the page: the wrapper is otherwise tiny and most visits never scan
+       anything. The camera takes longer to warm up than this takes to load. */
+    var zxLoad = null;
+    function zxReady() {
+      if (zxLoad) return zxLoad;
+      zxLoad = new Promise(function (ok, bad) {
+        if (window.ZXing) return ok(window.ZXing);
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+        s.onload = function () {
+          window.ZXing ? ok(window.ZXing) : bad(new Error('ตัวอ่านโหลดไม่ครบ'));
+        };
+        s.onerror = function () { bad(new Error('โหลดตัวอ่านบาร์โค้ดไม่สำเร็จ')); };
+        document.head.appendChild(s);
+      });
+      return zxLoad;
+    }
+
+    /* Pin the darkest 2% to black and the brightest 2% to white. The 1D reader
+       judges each row of pixels by that row's own histogram, so a strip shot
+       under room light — grey bars on grey card, not black on white — sits in
+       too narrow a band of greys for it to find an edge. Widening the range is
+       the one cheap thing that fixes that. */
+    function stretchGrey(cv) {
+      var g = cv.getContext('2d');
+      var d = g.getImageData(0, 0, cv.width, cv.height), p = d.data;
+      var hist = new Uint32Array(256), n = p.length / 4, i;
+      for (i = 0; i < p.length; i += 4) {
+        var y = (p[i] * 77 + p[i + 1] * 151 + p[i + 2] * 28) >> 8;
+        p[i] = p[i + 1] = p[i + 2] = y;
+        hist[y]++;
       }
+      var lo = 0, hi = 255, acc = 0, cut = n * 0.02;
+      for (i = 0; i < 256; i++) { acc += hist[i]; if (acc >= cut) { lo = i; break; } }
+      acc = 0;
+      for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= cut) { hi = i; break; } }
+      if (hi - lo < 20) { lo = 0; hi = 255; }   // nothing to stretch; leave it
+      var sc = 255 / (hi - lo);
+      for (i = 0; i < p.length; i += 4) {
+        var v = (p[i] - lo) * sc;
+        p[i] = p[i + 1] = p[i + 2] = v < 0 ? 0 : (v > 255 ? 255 : v);
+      }
+      g.putImageData(d, 0, 0);
+      return cv;
+    }
+
+    /* The reader is built when the camera opens and dropped when it closes.
+       Keeping one alive across sessions looked tidier and was the cause of the
+       strangest symptom in this whole hunt: the first barcode of a session
+       read, and every one after it failed. */
+    function dropBandReader() {
+      bandPack = null;
     }
     var scanAsker = null;
 
@@ -170,7 +209,7 @@
       var inst = scanInst;
       scanInst = null;
       if (scanResTimer) { clearInterval(scanResTimer); scanResTimer = null; }
-      if (scanBandTimer) { clearInterval(scanBandTimer); scanBandTimer = null; }
+      if (scanBandTimer) { clearTimeout(scanBandTimer); scanBandTimer = null; }
       dropBandReader();
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
@@ -234,7 +273,8 @@
           el.textContent = (v.videoWidth
             ? ('กล้อง ' + v.videoWidth + ' x ' + v.videoHeight)
             : 'ยังไม่มีภาพจากกล้อง') +
-            ' · อ่าน ' + bandDone + '/' + bandTries +
+            ' · รอบ ' + bandTries +
+            (bandWay ? (' · ' + bandWay) : '') +
             (bandSlowest ? (' · ' + bandSlowest + 'ms') : '') +
             (bandLastErr ? (' · ' + bandLastErr) : '');
         }, 700);
@@ -263,90 +303,112 @@
       });
     }
 
-    /* A second pass over the same picture, at the camera's real resolution.
-       html5-qrcode's own loop decodes from a canvas the size of the video
-       ELEMENT — measured at 568px wide while the camera was sending 1080, and
-       nearer 390 on a phone. A QR survives that; the narrow bars of a 1D
-       barcode do not, which is exactly the split we kept seeing: QR reads, the
-       strip on a UPS never does.
+    /* A second pass over the same picture, at the camera's real resolution and
+       through ZXing directly rather than through html5-qrcode.
 
-       So this grabs a band across the middle of the frame at full width and
-       hands it to scanFile, which is the path already proven to read Code 39
-       and EAN. One at a time, a few times a second, and whichever pass finds a
-       code first closes the scanner. */
+       Two separate reasons, both measured. First, html5-qrcode's own loop
+       decodes from a canvas the size of the video ELEMENT — 568px wide while
+       the camera was sending 1080, nearer 390 on a phone. A QR survives that;
+       the narrow bars of a 1D barcode do not. So this takes a band across the
+       middle of the frame at full sensor width.
+
+       Second, its scanFile path lays the picture on a canvas 100px larger on
+       every side and pins ZXing's TRY_HARDER hint to false. That black border
+       joins the histogram of every row the 1D reader samples — and for a bar
+       strip that histogram IS the decoder, which is why the same barcode would
+       read once and then never, and why trimming twenty pixels off one edge
+       could flip the result. Side by side on nine hand-held frames (blurred,
+       washed out, glared, small): html5-qrcode read 2, this reads 7, and a
+       miss costs 68ms instead of 1258ms.
+
+       QR is left alone — that still comes from html5-qrcode's own loop on the
+       video, which has always worked. */
     function startBandPass() {
-      if (scanBandTimer) clearInterval(scanBandTimer);
-
-      /* One decoder, one canvas, one holder — reused for every pass.
-         Building a fresh Html5Qrcode two or three times a second meant dozens
-         of decoders and their ZXing readers piling up inside a single scan,
-         and the reads got rarer the longer the camera stayed open: it would
-         catch a barcode once and then never again. */
+      if (scanBandTimer) clearTimeout(scanBandTimer);
       dropBandReader();
-      bandTries = 0; bandDone = 0; bandSlowest = 0; bandLastErr = '';
-      var holder = document.createElement('div');
-      holder.id = 'bandHolder_' + Date.now();
-      holder.style.display = 'none';
-      document.body.appendChild(holder);
-      bandHolderId = holder.id;
-      bandReader = new Html5Qrcode(holder.id);
+      bandTries = 0; bandSlowest = 0; bandWay = '';
+      bandLastErr = 'กำลังโหลดตัวอ่าน...';
+
+      var Z = null;
+      zxReady().then(function (z) {
+        Z = z;
+        var h = new Map();
+        h.set(z.DecodeHintType.POSSIBLE_FORMATS, [
+          z.BarcodeFormat.EAN_13, z.BarcodeFormat.EAN_8,
+          z.BarcodeFormat.UPC_A, z.BarcodeFormat.UPC_E,
+          z.BarcodeFormat.CODE_128, z.BarcodeFormat.CODE_39,
+          z.BarcodeFormat.CODE_93, z.BarcodeFormat.ITF, z.BarcodeFormat.CODABAR
+        ]);
+        bandPack = { reader: new z.MultiFormatOneDReader(h), hints: h };
+        bandLastErr = '';
+      }).catch(function (e) {
+        bandLastErr = String((e && e.message) || e).slice(0, 42);
+      });
+
+      function read(cv) {
+        try {
+          var src = new Z.HTMLCanvasElementLuminanceSource(cv);
+          var res = bandPack.reader.decode(
+            new Z.BinaryBitmap(new Z.HybridBinarizer(src)), bandPack.hints);
+          return String((res && res.getText()) || '').trim();
+        } catch (e) { return ''; }      // a miss throws; that is the normal case
+      }
+
       var cv = document.createElement('canvas');
-      var busy = false;
+      var cs = document.createElement('canvas');
+      var tick = 0;
 
-      scanBandTimer = setInterval(function () {
-        if (busy || !scanInst) return;
+      /* Each pass is scheduled after the last one finishes rather than on a
+         fixed timer: decoding blocks the main thread, and a fixed interval
+         shorter than the work simply queues up passes and freezes the
+         preview. A fixed gap keeps the picture moving. */
+      function pass() {
+        scanBandTimer = null;
+        if (!scanInst) return;
+        var again = function () {
+          if (scanInst) scanBandTimer = setTimeout(pass, 60);
+        };
         var v = document.querySelector('#scanReader video');
-        if (!v || !v.videoWidth) return;
-        busy = true;
-        bandTries++;
-        var startedAt = Date.now();
+        if (!v || !v.videoWidth || !Z || !bandPack) return again();
 
+        var startedAt = Date.now();
+        bandTries++;
         var vw = v.videoWidth, vh = v.videoHeight;
         var bandH = Math.max(1, Math.round(vh * 0.5));
+        cv.width = vw; cv.height = bandH;
+        cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH,
+          0, 0, vw, bandH);
 
-        /* Keep every pixel across, throw most of them away down the page.
-           A 1D barcode carries all of its information horizontally — the bars
-           just repeat vertically — so squashing the band to a short strip costs
-           the decoder nothing and shrinks the image about fivefold. That
-           matters more than it sounds: encoding the full band was measured at
-           over a second per pass, which on a hand-held camera is barely one
-           chance a second to catch a steady, focused frame. Cheaper passes mean
-           several chances a second instead. */
-        /* No squeeze any more. It was there to make passes cheap, but at ~150ms
-           a pass there is room, and compressing the band can only cost the
-           decoder detail — including shearing a hand-held tilt. */
-        var outH = bandH;
-        cv.width = vw; cv.height = outH;
-        cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, outH);
+        var shown = cv;
+        var hit = read(cv);
+        if (hit) bandWay = 'ปกติ';
 
-        /* PNG, not JPEG. The narrow bars of a 1D code are a few pixels wide and
-           JPEG smears exactly that detail — the one thing the decoder needs.
-           A QR never cared, which is part of why only barcodes were failing. */
+        /* A second look at the same frame with the contrast pulled open. It
+           costs about as much again, so it runs on every other pass — it is
+           what rescues a strip shot under room light, which arrives grey on
+           grey rather than black on white. */
+        if (!hit && (tick++ & 1)) {
+          cs.width = vw; cs.height = bandH;
+          cs.getContext('2d').drawImage(cv, 0, 0);
+          stretchGrey(cs);
+          shown = cs;
+          hit = read(cs);
+          if (hit) bandWay = 'คอนทราสต์';
+        }
+
+        bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
+        if (!hit) bandLastErr = 'ไม่พบรหัส';
+
         if (Date.now() - peekAt > 900) {
           peekAt = Date.now();
           var peek = document.getElementById('scanPeek');
-          if (peek) peek.src = cv.toDataURL('image/jpeg', 0.6);
+          if (peek) peek.src = shown.toDataURL('image/jpeg', 0.6);
         }
 
-        cv.toBlob(function (blob) {
-          if (!blob || !scanInst) { busy = false; return; }
-          var reader = bandReader;
-          if (!reader) { busy = false; return; }
-          reader.scanFile(new File([blob], 'band.png', { type: 'image/png' }), false)
-            .then(function (text) {
-              busy = false; bandDone++;
-              bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
-              var value = String(text || '').trim();
-              if (value && scanInst) closeScanner({ k2: 'scanned', text: value });
-            })
-            .catch(function (e) {
-              busy = false; bandDone++;
-              bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
-              var m = String((e && e.message) || e || '');
-              bandLastErr = /No (barcode|MultiFormat|QR)/i.test(m) ? 'ไม่พบรหัส' : m.slice(0, 42);
-            });
-        }, 'image/png');
-      }, 150);
+        if (hit && scanInst) return closeScanner({ k2: 'scanned', text: hit });
+        again();
+      }
+      pass();
     }
 
     document.getElementById('scanClose').addEventListener('click', function () {
