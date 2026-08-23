@@ -116,6 +116,10 @@
     var scanBandTimer = null;
     var bandReader = null;
     var bandHolderId = '';
+    /* Counters, shown on screen. Several rounds of this hunt were spent fixing
+       things that were never running; a number that stays at zero says so in
+       one glance. */
+    var bandTries = 0, bandDone = 0, bandSlowest = 0;
 
     /* The extra decoder is built fresh for each time the camera is opened and
        discarded when it closes. Keeping one alive across sessions looked
@@ -200,9 +204,11 @@
           var v = document.querySelector('#scanReader video');
           var el = document.getElementById('scanInfo');
           if (!v || !el) return;
-          el.textContent = v.videoWidth
+          el.textContent = (v.videoWidth
             ? ('กล้อง ' + v.videoWidth + ' x ' + v.videoHeight)
-            : 'ยังไม่มีภาพจากกล้อง';
+            : 'ยังไม่มีภาพจากกล้อง') +
+            ' · อ่านละเอียด ' + bandDone + '/' + bandTries +
+            (bandSlowest ? (' · ' + bandSlowest + 'ms') : '');
         }, 700);
 
         /* Keep the lens hunting. Held close to a barcode the camera can settle
@@ -249,6 +255,7 @@
          and the reads got rarer the longer the camera stayed open: it would
          catch a barcode once and then never again. */
       dropBandReader();
+      bandTries = 0; bandDone = 0; bandSlowest = 0;
       var holder = document.createElement('div');
       holder.id = 'bandHolder_' + Date.now();
       holder.style.display = 'none';
@@ -263,11 +270,23 @@
         var v = document.querySelector('#scanReader video');
         if (!v || !v.videoWidth) return;
         busy = true;
+        bandTries++;
+        var startedAt = Date.now();
 
         var vw = v.videoWidth, vh = v.videoHeight;
         var bandH = Math.max(1, Math.round(vh * 0.5));
-        cv.width = vw; cv.height = bandH;
-        cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, bandH);
+
+        /* Keep every pixel across, throw most of them away down the page.
+           A 1D barcode carries all of its information horizontally — the bars
+           just repeat vertically — so squashing the band to a short strip costs
+           the decoder nothing and shrinks the image about fivefold. That
+           matters more than it sounds: encoding the full band was measured at
+           over a second per pass, which on a hand-held camera is barely one
+           chance a second to catch a steady, focused frame. Cheaper passes mean
+           several chances a second instead. */
+        var outH = Math.min(bandH, 240);
+        cv.width = vw; cv.height = outH;
+        cv.getContext('2d').drawImage(v, 0, Math.round((vh - bandH) / 2), vw, bandH, 0, 0, vw, outH);
 
         /* PNG, not JPEG. The narrow bars of a 1D code are a few pixels wide and
            JPEG smears exactly that detail — the one thing the decoder needs.
@@ -278,13 +297,17 @@
           if (!reader) { busy = false; return; }
           reader.scanFile(new File([blob], 'band.png', { type: 'image/png' }), false)
             .then(function (text) {
-              busy = false;
+              busy = false; bandDone++;
+              bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
               var value = String(text || '').trim();
               if (value && scanInst) closeScanner({ k2: 'scanned', text: value });
             })
-            .catch(function () { busy = false; });
+            .catch(function () {
+              busy = false; bandDone++;
+              bandSlowest = Math.max(bandSlowest, Date.now() - startedAt);
+            });
         }, 'image/png');
-      }, 300);
+      }, 150);
     }
 
     document.getElementById('scanClose').addEventListener('click', function () {
