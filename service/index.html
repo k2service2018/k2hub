@@ -11,13 +11,35 @@
   <style>
     html, body { margin: 0; padding: 0; background: #f5f6fb; overflow: hidden; height: 100%; height: 100svh; }
     iframe { display: block; border: 0; width: 100%; height: 100%; height: 100svh; }
+    /* Full-screen scanner. It lives HERE, in the top-level page, because the
+       app itself runs inside Google's sandbox iframe whose permission list
+       has no camera on it — getUserMedia is refused there by policy, with no
+       prompt and no setting that changes it. This page is a real document on
+       its own origin, so the camera behaves normally. */
+    #scanWrap { position: fixed; inset: 0; z-index: 9999; background: #000; display: none; }
+    #scanReader { width: 100%; height: 100%; }
+    #scanReader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+    #scanBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px 30px;
+      background: linear-gradient(transparent, rgba(0,0,0,.75)); text-align: center; z-index: 10000; }
+    #scanBar button { min-height: 46px; padding: 0 26px; font-size: 15px; font-weight: 600;
+      border: 0; border-radius: 10px; background: #fff; color: #333; }
+    #scanMsg { position: fixed; left: 0; right: 0; top: 0; padding: 14px 16px;
+      background: rgba(0,0,0,.6); color: #fff; font: 14px/1.5 sans-serif;
+      text-align: center; z-index: 10000; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <iframe id="app"
     src="https://script.google.com/macros/s/AKfycbxQ8mrwRgf21WtqmaPm02AXpQ1ukS8IEt3N3rreMmd3MkHcVw2bEeevY4q4XPvYYKygOg/exec"
     title="K2 Equipment &amp; Service Hub"
     allow="camera; clipboard-write"></iframe>
+
+  <div id="scanWrap">
+    <div id="scanMsg">เล็ง QR บนป้ายเครื่องให้อยู่ในกรอบ</div>
+    <div id="scanReader"></div>
+    <div id="scanBar"><button type="button" id="scanClose">ปิดกล้อง</button></div>
+  </div>
 
   <script>
     (function () {
@@ -54,9 +76,75 @@
           e.source.postMessage({ k2: 'wrapper' }, '*');
         } else if (d.k2 === 'nav' && typeof d.url === 'string' && d.url.indexOf(APP_PREFIX) === 0) {
           frame.src = d.url;
+        } else if (d.k2 === 'scan') {
+          // Reply to the exact window that asked. e.source is the app's own
+          // frame; frame.contentWindow is Google's page in between, which
+          // would not pass the answer on.
+          openScanner(e.source);
         }
       });
     }());
+
+    /* The scanner itself. Kept in this page rather than in the app because
+       only this page is allowed to open a camera — see the note in the CSS. */
+    var scanInst = null;
+    var scanAsker = null;
+
+    function scanTell(msg) {
+      if (scanAsker) { try { scanAsker.postMessage(msg, '*'); } catch (e) {} }
+    }
+
+    function closeScanner(msg) {
+      var wrap = document.getElementById('scanWrap');
+      wrap.style.display = 'none';
+      var inst = scanInst;
+      scanInst = null;
+      if (msg) scanTell(msg);
+      scanAsker = null;
+      if (inst) { inst.stop().then(function () { inst.clear(); }).catch(function () {}); }
+    }
+
+    function openScanner(source) {
+      if (scanInst) return;
+      scanAsker = source;
+      var wrap = document.getElementById('scanWrap');
+      wrap.style.display = 'block';
+      document.getElementById('scanMsg').textContent = 'กำลังเปิดกล้อง...';
+      // Tell the app at once that the camera is ours now. Without this it
+      // cannot tell a wrapper that is working from one too old to know what
+      // a scan request is, and it would fall back to a photo mid-scan.
+      scanTell({ k2: 'scanOpen' });
+      var inst = new Html5Qrcode('scanReader');
+      scanInst = inst;
+      inst.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          // Square, because every K2 serial label is a square QR: a landscape
+          // box crops the top and bottom off the code and nothing ever reads.
+          qrbox: function (w, h) {
+            var edge = Math.floor(Math.min(w, h) * 0.72);
+            return { width: edge, height: edge };
+          }
+        },
+        function (text) {
+          var value = String(text || '').trim();
+          if (value) closeScanner({ k2: 'scanned', text: value });
+        },
+        function () { /* a miss per frame is normal */ }
+      ).then(function () {
+        document.getElementById('scanMsg').textContent = 'เล็ง QR บนป้ายเครื่องให้อยู่ในกรอบ';
+      }).catch(function () {
+        // Even here the camera can be refused — in an in-app browser, or if
+        // the user has said no. Tell the app so it can offer a photo instead.
+        scanInst = null;
+        closeScanner({ k2: 'scanFail' });
+      });
+    }
+
+    document.getElementById('scanClose').addEventListener('click', function () {
+      closeScanner({ k2: 'scanCancel' });
+    });
   </script>
 </body>
 </html>
