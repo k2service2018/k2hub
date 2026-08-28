@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expense Claim</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+  <script>
+    (function() {
+      try {
+        var saved = localStorage.getItem('expenseClaimTheme');
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+
+<div id="boot" class="boot">
+  <div class="spinner"></div>
+  <p data-i18n="boot_loading">กำลังโหลดระบบ…</p>
+</div>
+
+<div id="auth" class="authwrap" hidden>
+  <div class="authcard">
+
+    <div class="authtop">
+      <button type="button" class="barbtn barbtn--icon" id="themeAuth" title="Theme"></button>
+      <button type="button" class="barbtn" id="langAuth"></button>
+    </div>
+
+    <div class="authbox">
+      <div class="authcard__brand">
+        <h1 id="authTitle">
+          <i data-lucide="receipt-text" class="logo-icon"></i>
+          <span>Expense Claim</span>
+        </h1>
+        <p id="authDocNo" class="docno"></p>
+      </div>
+
+      <div class="authtabs">
+        <button type="button" class="authtab is-active" data-auth="login" data-i18n="tab_login"></button>
+        <button type="button" class="authtab" data-auth="signup" data-i18n="tab_signup"></button>
+      </div>
+
+      <form id="authLogin" class="authform" autocomplete="on">
+        <div class="field">
+          <label for="loginEmail" data-i18n="f_email"></label>
+          <input type="email" id="loginEmail" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="loginPassword" data-i18n="f_password"></label>
+          <input type="password" id="loginPassword" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block" data-i18n="act_login"></button>
+        <button type="button" class="linkbtn" id="btnForgot" data-i18n="act_forgot"></button>
+      </form>
+
+      <form id="authSignup" class="authform" hidden autocomplete="on">
+        <p class="hint">
+          <span data-i18n="signup_any_email"></span>
+          <span id="signupApprovalNote"></span>
+        </p>
+        <div class="field">
+          <label for="signupEmail"><span data-i18n="f_email"></span> <span class="req">*</span></label>
+          <input type="email" id="signupEmail" autocomplete="username" required>
+        </div>
+        <div class="authgrid">
+          <div class="field">
+            <label for="signupPassword"><span data-i18n="f_password"></span> <span class="req">*</span></label>
+            <input type="password" id="signupPassword" autocomplete="new-password" required>
+            <small class="fieldhint" id="pwHint"></small>
+          </div>
+          <div class="field">
+            <label for="signupConfirm"><span data-i18n="f_confirm_password"></span> <span class="req">*</span></label>
+            <input type="password" id="signupConfirm" autocomplete="new-password" required>
+          </div>
+        </div>
+        <div class="authgrid" id="signupFields"></div>
+        <button type="submit" class="btn btn--primary btn--block" data-i18n="act_signup"></button>
+      </form>
+
+      <form id="authForgot" class="authform" hidden>
+        <p class="hint" data-i18n="forgot_help"></p>
+        <div class="field">
+          <label for="forgotEmail" data-i18n="f_email"></label>
+          <input type="email" id="forgotEmail" required>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block" data-i18n="act_send_reset"></button>
+        <button type="button" class="linkbtn" data-auth="login" data-i18n="act_back_login"></button>
+      </form>
+
+      <form id="authReset" class="authform" hidden>
+        <p class="hint"><span data-i18n="reset_for"></span> <strong id="resetEmail"></strong></p>
+        <div class="field">
+          <label for="resetPassword" data-i18n="f_new_password"></label>
+          <input type="password" id="resetPassword" autocomplete="new-password" required>
+        </div>
+        <div class="field">
+          <label for="resetConfirm" data-i18n="f_confirm_new_password"></label>
+          <input type="password" id="resetConfirm" autocomplete="new-password" required>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block" data-i18n="act_save_new_password"></button>
+        <button type="button" class="linkbtn" data-auth="login" data-i18n="act_back_login"></button>
+      </form>
+
+      <div id="authErrors" class="errors" hidden></div>
+      <div id="authNotice" class="banner banner--info" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="app" hidden>
+
+  <header class="topbar">
+    <div class="brand">
+      <i data-lucide="receipt-text" class="brand-icon"></i>
+      <h1 id="docTitle">Expense Claim</h1>
+      <span class="docno" id="docNo"></span>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab is-active" data-view="form" data-i18n="nav_form"></button>
+      <button class="tab" data-view="list" data-i18n="nav_list"></button>
+      <button class="tab" data-view="inbox" hidden><span data-i18n="nav_inbox"></span><span class="pill" id="inboxCount" hidden>0</span></button>
+      <button class="tab" data-view="review" hidden data-i18n="nav_review"></button>
+      <button class="tab" data-view="admin" hidden><span data-i18n="nav_admin"></span><span class="pill" id="pendingCount" hidden>0</span></button>
+      <button class="tab" data-view="register" data-i18n="nav_profile"></button>
+    </nav>
+    <div class="who">
+      <span id="claimIdBadge" class="badge badge--new"></span>
+      <span class="userchip">
+        <span id="userName"></span>
+        <span class="rolechip" id="userRole"></span>
+      </span>
+      <button type="button" class="barbtn barbtn--icon" id="themeApp" title="Theme"></button>
+      <button type="button" class="barbtn" id="langApp"></button>
+      <button type="button" class="barbtn barbtn--danger" id="btnLogout">
+        <i data-lucide="log-out" class="icon-sm"></i>
+        <span data-i18n="act_logout"></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="view-register" class="view" hidden>
+    <section class="card card--narrow">
+      <h2 class="card__title" data-i18n="ttl_my_profile"></h2>
+      <p class="hint" data-i18n="hint_my_profile"></p>
+
+      <div class="idcard">
+        <span class="idcard__label" data-i18n="lbl_account"></span>
+        <strong id="regEmail"></strong>
+        <span class="badge" id="regStatusBadge" hidden></span>
+      </div>
+
+      <div class="grid-header" id="registerFields"></div>
+
+      <div id="regErrors" class="errors" hidden></div>
+
+      <div class="formactions">
+        <button type="button" class="btn btn--primary" id="btnRegister" data-i18n="act_save_changes"></button>
+      </div>
+    </section>
+
+    <section class="card card--narrow">
+      <h2 class="card__title" data-i18n="ttl_change_password"></h2>
+      <p class="hint" data-i18n="hint_change_password"></p>
+      <div class="authgrid">
+        <div class="field">
+          <label for="pwOld" data-i18n="f_old_password"></label>
+          <input type="password" id="pwOld" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="pwNew" data-i18n="f_new_password"></label>
+          <input type="password" id="pwNew" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="pwConfirm" data-i18n="f_confirm_new_password"></label>
+          <input type="password" id="pwConfirm" autocomplete="new-password">
+        </div>
+      </div>
+      <div id="pwErrors" class="errors" hidden></div>
+      <div class="formactions">
+        <button type="button" class="btn btn--secondary" id="btnChangePassword" data-i18n="act_change_password"></button>
+      </div>
+    </section>
+
+    <section class="card card--narrow" id="rolePanel" hidden>
+      <h2 class="card__title" data-i18n="ttl_my_permissions"></h2>
+      <ul class="rolelist" id="roleList"></ul>
+    </section>
+  </main>
+
+  <main id="view-form" class="view">
+
+    <div id="flowbar" class="flowbar" hidden></div>
+    <div id="rejectBanner" class="banner banner--danger" hidden></div>
+    <div id="lockBanner" class="banner banner--info" hidden></div>
+
+    <section class="card">
+      <h2 class="card__title" data-i18n="ttl_claimant"></h2>
+      <div class="grid-header" id="headerFields"></div>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title" data-i18n="ttl_expense_items"></h2>
+        <div class="card__actions">
+          <span id="rowCounter" class="muted"></span>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnAddRow" data-i18n="act_add_row"></button>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnClearEmpty" data-i18n="act_clear_empty"></button>
+        </div>
+      </div>
+
+      <p class="hint" id="gridHint"></p>
+
+      <div class="table-wrap">
+        <table class="grid" id="itemTable">
+          <thead>
+            <tr id="headRow"></tr>
+          </thead>
+          <tbody id="itemBody"></tbody>
+          <tfoot><tr id="footRow"></tr></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card--fuel">
+      <div class="card__head">
+        <h2 class="card__title" data-i18n="ttl_fuel"></h2>
+        <div class="card__actions">
+          <span id="fuelCounter" class="muted"></span>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnAddFuel" data-i18n="act_add_row"></button>
+        </div>
+      </div>
+
+      <p class="hint" id="fuelHint"></p>
+
+      <div class="table-wrap">
+        <table class="grid grid--fuel" id="fuelTable">
+          <thead>
+            <tr id="fuelHeadRow"></tr>
+          </thead>
+          <tbody id="fuelBody"></tbody>
+          <tfoot><tr id="fuelFootRow"></tr></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card__title" data-i18n="ttl_by_account"></h2>
+      <div class="summary" id="summary"></div>
+      <div class="grand">
+        <span data-i18n="lbl_grand_total"></span>
+        <strong id="grandTotal">0.00</strong>
+        <span class="cur" id="curLabel">THB</span>
+      </div>
+      <p class="fuelmemo" id="fuelMemo" hidden>
+        <span data-i18n="lbl_fuel_memo"></span>
+        <b id="fuelLiterOut">0.00</b> <span data-i18n="unit_liter"></span> ·
+        <b id="fuelTotalOut">0.00</b> <span data-i18n="unit_baht"></span>
+      </p>
+    </section>
+
+    <section class="card">
+      <h2 class="card__title" data-i18n="ttl_note_to_checker"></h2>
+      <textarea id="note" rows="2"></textarea>
+
+      <div class="workflow">
+        <h3 data-i18n="ttl_workflow"></h3>
+        <ol id="workflowList"></ol>
+      </div>
+    </section>
+
+    <section class="card" id="historyCard" hidden>
+      <h2 class="card__title" data-i18n="ttl_history"></h2>
+      <ul class="timeline" id="historyList"></ul>
+    </section>
+
+    <div id="errors" class="errors" hidden></div>
+
+    <div class="actionbar" id="actionbar">
+      <button type="button" class="btn btn--ghost" id="btnNew" data-i18n="act_new_claim"></button>
+      <button type="button" class="btn btn--ghost" id="btnPdf" disabled data-i18n="act_print_pdf"></button>
+      <span class="flex"></span>
+      <button type="button" class="btn btn--danger" id="btnReject" hidden data-i18n="act_reject"></button>
+      <button type="button" class="btn btn--secondary" id="btnDraft" data-i18n="act_save_draft"></button>
+      <button type="button" class="btn btn--primary" id="btnSubmit" data-i18n="act_submit_admin"></button>
+      <button type="button" class="btn btn--primary" id="btnCheck" hidden data-i18n="act_check_pass"></button>
+      <button type="button" class="btn btn--primary" id="btnApprove" hidden data-i18n="act_approve"></button>
+      <button type="button" class="btn btn--primary" id="btnPay" hidden data-i18n="act_mark_paid"></button>
+    </div>
+  </main>
+
+  <main id="view-list" class="view" hidden>
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title" data-i18n="ttl_my_claims"></h2>
+        <div class="card__actions">
+          <label class="chk"><input type="checkbox" id="fMine" checked> <span data-i18n="lbl_only_mine"></span></label>
+          <select id="fStatus"></select>
+          <input type="search" id="fQuery">
+          <button type="button" class="btn btn--ghost btn--sm" id="btnRefresh" data-i18n="act_refresh"></button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="list">
+          <thead>
+            <tr>
+              <th data-i18n="col_claim_no"></th>
+              <th data-i18n="col_status"></th>
+              <th data-i18n="col_period"></th>
+              <th data-i18n="col_creator"></th>
+              <th data-i18n="col_dept"></th>
+              <th class="num" data-i18n="col_rows"></th>
+              <th class="num" data-i18n="col_total"></th>
+              <th data-i18n="col_updated"></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="claimListBody"></tbody>
+        </table>
+      </div>
+      <p id="listEmpty" class="muted" hidden data-i18n="empty_claims"></p>
+    </section>
+  </main>
+
+  <main id="view-inbox" class="view" hidden>
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title" data-i18n="ttl_inbox"></h2>
+        <div class="card__actions">
+          <button type="button" class="btn btn--ghost btn--sm" id="btnInboxRefresh" data-i18n="act_refresh"></button>
+        </div>
+      </div>
+      <div class="statrow" id="inboxStats"></div>
+      <div class="table-wrap">
+        <table class="list">
+          <thead>
+            <tr>
+              <th data-i18n="col_claim_no"></th>
+              <th data-i18n="col_stage"></th>
+              <th data-i18n="col_creator"></th>
+              <th data-i18n="col_dept"></th>
+              <th class="num" data-i18n="col_total"></th>
+              <th data-i18n="col_submitted_at"></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inboxBody"></tbody>
+        </table>
+      </div>
+      <p id="inboxEmpty" class="muted" hidden data-i18n="empty_inbox"></p>
+    </section>
+  </main>
+
+  <main id="view-review" class="view" hidden>
+
+    <div id="reviewEmpty" class="card card--narrow" hidden>
+      <h2 class="card__title" data-i18n="ttl_review"></h2>
+      <p class="muted" data-i18n="hint_pick_from_inbox"></p>
+      <button type="button" class="btn btn--primary" id="btnGoInbox" data-i18n="act_go_inbox"></button>
+    </div>
+
+    <div id="reviewPane" hidden>
+      <section class="card reviewhead">
+        <div class="reviewhead__main">
+          <div class="reviewhead__id">
+            <span class="badge" id="rvStatus">—</span>
+            <h2 id="rvClaimId">—</h2>
+            <span class="muted" id="rvRevision"></span>
+          </div>
+          <dl class="reviewmeta" id="rvMeta"></dl>
+        </div>
+        <div class="reviewhead__side">
+          <div class="progress">
+            <div class="progress__bar"><span id="rvBar"></span></div>
+            <p class="progress__label" id="rvProgress"></p>
+          </div>
+          <div class="reviewtotals">
+            <span data-i18n="lbl_claimed_total"></span>
+            <strong id="rvTotal">0.00</strong>
+          </div>
+          <div class="reviewbulk">
+            <button type="button" class="btn btn--ghost btn--sm" id="btnMarkAllOk" data-i18n="act_mark_all_ok"></button>
+            <button type="button" class="btn btn--ghost btn--sm" id="btnClearMarks" data-i18n="act_clear_marks"></button>
+          </div>
+        </div>
+      </section>
+
+      <div id="rvRejectBanner" class="banner banner--danger" hidden></div>
+
+      <section class="card card--decision" id="rvDecision" hidden>
+        <h2 class="card__title" data-i18n="ttl_approve_decision"></h2>
+        <div class="decision">
+          <div class="decision__amount">
+            <span data-i18n="lbl_amount_to_approve"></span>
+            <strong id="rvDecTotal">0.00</strong>
+            <span class="cur" id="rvDecCur">THB</span>
+            <p class="muted" id="rvDecCount"></p>
+          </div>
+          <dl class="reviewmeta decision__check" id="rvDecCheck"></dl>
+        </div>
+        <p class="fuelmemo" id="rvDecFuel" hidden></p>
+        <div class="summary" id="rvDecGroups"></div>
+      </section>
+
+      <section class="card">
+        <div class="card__head">
+          <h2 class="card__title" id="rvItemsTitle"></h2>
+          <div class="card__actions">
+            <label class="chk"><input type="checkbox" id="rvEditMode"> <span data-i18n="lbl_edit_numbers"></span></label>
+            <span class="muted" id="rvFlagHint" data-i18n="hint_toggle_flag"></span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="review" id="reviewTable">
+            <thead>
+              <tr>
+                <th class="c-no">No.</th>
+                <th data-i18n="col_date"></th>
+                <th data-i18n="col_receipt"></th>
+                <th data-i18n="col_description"></th>
+                <th data-i18n="col_dept"></th>
+                <th class="num" data-i18n="col_amount"></th>
+                <th class="c-breakdown" data-i18n="col_breakdown"></th>
+                <th class="c-flag" data-i18n="col_result"></th>
+                <th data-i18n="col_reviewer_note"></th>
+              </tr>
+            </thead>
+            <tbody id="reviewBody"></tbody>
+            <tfoot><tr id="reviewFoot"></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card__title" id="rvCommentTitle"></h2>
+        <textarea id="rvComment" rows="3"></textarea>
+      </section>
+
+      <section class="card" id="rvHistoryCard" hidden>
+        <h2 class="card__title" data-i18n="ttl_history"></h2>
+        <ul class="timeline" id="rvHistory"></ul>
+      </section>
+
+      <div id="rvErrors" class="errors" hidden></div>
+
+      <div class="actionbar">
+        <button type="button" class="btn btn--ghost" id="btnRvBack" data-i18n="act_back_inbox"></button>
+        <button type="button" class="btn btn--ghost" id="btnRvPdf" data-i18n="act_print_pdf"></button>
+        <span class="flex"></span>
+        <button type="button" class="btn btn--secondary" id="btnRvSaveReview" data-i18n="act_save_review"></button>
+        <button type="button" class="btn btn--danger" id="btnRvReject" data-i18n="act_reject_for_edit"></button>
+        <button type="button" class="btn btn--primary" id="btnRvPass" data-i18n="act_pass_to_manager"></button>
+        <button type="button" class="btn btn--primary" id="btnRvApprove" hidden data-i18n="act_approve"></button>
+      </div>
+    </div>
+  </main>
+
+  <main id="view-admin" class="view" hidden>
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title" data-i18n="ttl_user_admin"></h2>
+        <div class="card__actions">
+          <select id="aStatus"></select>
+          <select id="aRole"></select>
+          <input type="search" id="aQuery">
+          <button type="button" class="btn btn--ghost btn--sm" id="btnAdminRefresh" data-i18n="act_refresh"></button>
+        </div>
+      </div>
+      <p class="hint" data-i18n="hint_user_admin"></p>
+      <div class="table-wrap">
+        <table class="list">
+          <thead>
+            <tr>
+              <th data-i18n="col_name"></th>
+              <th data-i18n="col_email"></th>
+              <th data-i18n="col_division"></th>
+              <th data-i18n="col_jobtitle"></th>
+              <th data-i18n="col_approver"></th>
+              <th data-i18n="col_role"></th>
+              <th data-i18n="col_active"></th>
+              <th data-i18n="col_last_login"></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="adminBody"></tbody>
+        </table>
+      </div>
+      <p id="adminEmpty" class="muted" hidden data-i18n="empty_users"></p>
+    </section>
+  </main>
+
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal__box">
+    <h3 id="modalTitle"></h3>
+    <p id="modalDesc" class="muted"></p>
+    <textarea id="modalInput" rows="3"></textarea>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--ghost" id="modalCancel" data-i18n="act_cancel"></button>
+      <button type="button" class="btn btn--primary" id="modalOk" data-i18n="act_confirm"></button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay" hidden><div class="spinner"></div><p id="overlayMsg"></p></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+  var INITIAL_PAGE = "<?= initialPage ?>";
+  var INITIAL_CLAIM_ID = "<?= initialClaimId ?>";
+  var RESET_TOKEN = "<?= resetToken ?>";
+</script>
+<?!= include('JavaScript'); ?>
+</body>
+</html>

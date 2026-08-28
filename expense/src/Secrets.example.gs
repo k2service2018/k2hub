@@ -1,0 +1,7 @@
+var SECRETS = {
+  SPREADSHEET_ID: '',
+  SUPER_ADMIN_EMAIL: '',
+  SEED_PASSWORD: '',
+  PDF_FOLDER_ID: '',
+  WEBAPP_URL: ''
+};

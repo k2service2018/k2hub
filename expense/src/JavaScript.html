@@ -1,0 +1,3467 @@
+<script>
+var BOOT = null;
+
+var ME = null;
+
+var AMOUNT_KEYS = [];
+
+var CLAIM_KEYS = [];
+
+var FUEL_KEY = 'gasoline';
+
+var STATE = {
+  claimId: '',
+  status: '',
+  rows: [],
+  fuelRows: [],
+  perms: {},
+  readonly: false
+};
+
+var REVIEW = {
+  claimId: '',
+  claim: null,
+  res: null,
+  items: [],
+  perms: {},
+  editMode: false
+};
+
+var $ = function(sel, root) {
+  return (root || document).querySelector(sel);
+};
+
+var $$ = function(sel, root) {
+  return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+};
+
+function el(tag, attrs, children) {
+  var n = document.createElement(tag);
+  Object.keys(attrs || {}).forEach(function(k) {
+    if (k === 'class') n.className = attrs[k]; else if (k === 'text') n.textContent = attrs[k]; else if (k === 'html') n.innerHTML = attrs[k]; else if (attrs[k] !== null && attrs[k] !== undefined && attrs[k] !== false) n.setAttribute(k, attrs[k]);
+  });
+  (children || []).forEach(function(c) {
+    if (c) n.appendChild(c);
+  });
+  return n;
+}
+
+function num(v) {
+  if (v === '' || v === null || v === undefined) return 0;
+  var n = Number(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function money(n) {
+  return num(n).toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function statusLabel(s) {
+  if (!s) return '';
+  var d = I18N[LANG] || I18N.th;
+  if (d['st_' + s] !== undefined) return d['st_' + s];
+  return BOOT && BOOT.statusLabels && BOOT.statusLabels[s] || s;
+}
+
+function badgeClass(s) {
+  return 'badge badge--' + String(s || 'new').toLowerCase();
+}
+
+var TOKEN_KEY = 'expenseClaimToken';
+
+var LANG_KEY = 'expenseClaimLang';
+var THEME_KEY = 'expenseClaimTheme';
+var LANG = 'th';
+var THEME = 'light';
+
+try {
+  LANG = localStorage.getItem(LANG_KEY) || 'th';
+} catch (e) {}
+
+try {
+  THEME = localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+} catch (e) {}
+
+var I18N = {
+  th: {
+    ttl_approve_decision: 'ข้อมูลสำหรับการอนุมัติ',
+    ttl_items_readonly: 'รายการในใบเบิก (ดูอย่างเดียว)',
+    ttl_approver_comment: 'ความเห็นของผู้อนุมัติ',
+    lbl_amount_to_approve: 'ยอดที่ขออนุมัติ',
+    lbl_checked_by: 'ตรวจสอบโดย',
+    lbl_checked_at: 'ตรวจสอบเมื่อ',
+    lbl_check_result: 'ผลการตรวจ',
+    lbl_checker_note: 'ความเห็นผู้ตรวจสอบ',
+    ttl_fuel: 'ค่าน้ำมัน — Fleet Card',
+    fuel_hint: 'ค่าน้ำมันจ่ายด้วย Fleet Card จึงไม่นับรวมในยอดที่ขอเบิก แต่ยังต้องบันทึกว่าเติมกี่ลิตรและเป็นเงินเท่าไหร่',
+    fuel_subtotal: 'รวมค่าน้ำมัน (ไม่เบิก)',
+    fuel_row_pre: 'ค่าน้ำมันบรรทัดที่ ',
+    err_no_liter: ': ยังไม่ได้ระบุจำนวนลิตร',
+    lbl_fuel_memo: 'ค่าน้ำมัน Fleet Card (ไม่รวมในยอดเบิก):',
+    lbl_not_reimbursed: 'ไม่รวมในยอดเบิก',
+    unit_liter: 'ลิตร',
+    unit_baht: 'บาท',
+    boot_loading: 'กำลังโหลดระบบ…',
+    tab_login: 'เข้าสู่ระบบ',
+    tab_signup: 'สมัครสมาชิก',
+    f_email: 'อีเมล',
+    f_password: 'รหัสผ่าน',
+    f_confirm_password: 'ยืนยันรหัสผ่าน',
+    f_old_password: 'รหัสผ่านเดิม',
+    f_new_password: 'รหัสผ่านใหม่',
+    f_confirm_new_password: 'ยืนยันรหัสผ่านใหม่',
+    f_checker_email: 'อีเมล Admin ผู้ตรวจสอบ',
+    f_approver_email: 'อีเมล Manager ผู้อนุมัติ',
+    act_login: 'เข้าสู่ระบบ',
+    act_logout: 'ออกจากระบบ',
+    act_forgot: 'ลืมรหัสผ่าน?',
+    act_signup: 'สมัครสมาชิก',
+    act_send_reset: 'ส่งลิงก์ตั้งรหัสผ่านใหม่',
+    act_back_login: 'กลับไปหน้าเข้าสู่ระบบ',
+    act_save_new_password: 'บันทึกรหัสผ่านใหม่',
+    act_change_password: 'เปลี่ยนรหัสผ่าน',
+    act_save_changes: 'บันทึกการเปลี่ยนแปลง',
+    act_add_row: '+ เพิ่มบรรทัด',
+    act_clear_empty: 'ลบบรรทัดว่าง',
+    act_new_claim: 'ใบใหม่',
+    act_print_pdf: 'พิมพ์ / PDF',
+    act_save_draft: 'บันทึกฉบับร่าง',
+    act_refresh: 'รีเฟรช',
+    act_go_inbox: 'ไปที่รายการรอดำเนินการ',
+    act_back_inbox: 'กลับรายการรอดำเนินการ',
+    act_save_review: 'บันทึกผลตรวจ',
+    act_pass_to_manager: 'ตรวจสอบผ่าน → ส่ง Manager',
+    act_mark_all_ok: 'ทำเครื่องหมายผ่านทั้งหมด',
+    act_clear_marks: 'ล้างเครื่องหมาย',
+    act_cancel: 'ยกเลิก',
+    act_ok: 'รับทราบ',
+    title_logout: 'ออกจากระบบ',
+    confirm_logout: 'ต้องการออกจากระบบใช่หรือไม่?',
+    err_field_required: 'กรุณากรอกข้อมูล',
+    err_load_failed: 'โหลดข้อมูลไม่สำเร็จ',
+    signup_any_email: 'สมัครด้วยอีเมลอะไรก็ได้ ไม่จำเป็นต้องเป็นบัญชี Google',
+    forgot_help: 'กรอกอีเมลที่ใช้สมัคร ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ (ลิงก์มีอายุ 30 นาที)',
+    reset_for: 'ตั้งรหัสผ่านใหม่สำหรับ',
+    nav_form: 'แบบฟอร์ม',
+    nav_list: 'ใบเบิกของฉัน',
+    nav_inbox: 'รอฉันดำเนินการ',
+    nav_review: 'ตรวจสอบรายการ',
+    nav_admin: 'จัดการผู้ใช้',
+    nav_profile: 'โปรไฟล์',
+    ttl_my_profile: 'โปรไฟล์ของฉัน',
+    hint_my_profile: 'แก้ไขข้อมูลติดต่อได้ที่นี่ — การเปลี่ยนบทบาททำได้เฉพาะผู้ดูแลระบบ',
+    lbl_account: 'บัญชีที่ใช้งาน',
+    ttl_change_password: 'เปลี่ยนรหัสผ่าน',
+    hint_change_password: 'เปลี่ยนแล้วระบบจะออกจากระบบทุกเครื่องเพื่อความปลอดภัย',
+    ttl_my_permissions: 'สิทธิ์การใช้งานของคุณ',
+    ttl_claimant: 'ข้อมูลผู้เบิก',
+    ttl_expense_items: 'รายการค่าใช้จ่าย',
+    ttl_by_account: 'สรุปตามหมวดบัญชี',
+    ttl_note_to_checker: 'หมายเหตุถึงผู้ตรวจสอบ',
+    ttl_workflow: 'ขั้นตอนการดำเนินการ',
+    ttl_history: 'ประวัติการดำเนินการ',
+    ttl_my_claims: 'ใบเบิกของฉัน',
+    ttl_inbox: 'รายการที่รอคุณดำเนินการ',
+    ttl_review: 'หน้าตรวจสอบรายการ',
+    ttl_items_to_review: 'รายการที่ต้องตรวจสอบ',
+    ttl_reviewer_comment: 'ความเห็นของผู้ตรวจสอบ',
+    ttl_user_admin: 'จัดการผู้ใช้และสิทธิ์',
+    hint_user_admin: 'บทบาท Admin คือผู้ตรวจสอบ · Manager คือผู้อนุมัติ · Super Admin จัดการผู้ใช้ได้ — ปิดสวิตช์ ใช้งาน เพื่อระงับบัญชี',
+    hint_pick_from_inbox: 'เลือกใบเบิกจากรายการที่รอคุณดำเนินการ เพื่อเริ่มตรวจสอบหรืออนุมัติ',
+    hint_toggle_flag: 'คลิกที่ปุ่มผลตรวจเพื่อสลับ ผ่าน / ติดปัญหา',
+    grid_hint: 'หนึ่งบรรทัดคือหนึ่งใบเสร็จ — เลือกประเภทค่าใช้จ่าย แล้วใส่จำนวนเงินช่องเดียว ระบบจะลงคอลัมน์ให้ตรงกับแบบฟอร์ม Excel เอง กด Enter เพื่อไปบรรทัดถัดไป',
+    lbl_grand_total: 'ยอดรวมทั้งสิ้น',
+    lbl_only_mine: 'เฉพาะที่ฉันจัดทำ',
+    lbl_claimed_total: 'ยอดรวมที่ขอเบิก',
+    lbl_edit_numbers: 'แก้ไขตัวเลขได้',
+    empty_claims: 'ยังไม่มีใบเบิก',
+    empty_inbox: 'ไม่มีรายการรอคุณดำเนินการในขณะนี้',
+    empty_users: 'ยังไม่มีผู้สมัคร',
+    opt_all_status: 'ทุกสถานะ',
+    opt_all_roles: 'ทุกบทบาท',
+    opt_status_pending: 'รอเปิดใช้งาน',
+    opt_status_active: 'ใช้งานอยู่',
+    ph_search_claims: 'ค้นหา เลขที่ / ชื่อ / แผนก',
+    ph_search_users: 'ค้นหา ชื่อ / อีเมล / แผนก',
+    ph_note: 'ระบุข้อมูลเพิ่มเติม (ถ้ามี)',
+    ph_checker_blank: 'เว้นว่าง = ส่งให้ Admin ทุกคน',
+    ph_review_comment: 'สรุปผลการตรวจสอบ หรือเหตุผลที่ตีกลับ',
+    col_claim_no: 'เลขที่',
+    col_status: 'สถานะ',
+    col_rows: 'บรรทัด',
+    col_total: 'ยอดรวม',
+    col_updated: 'แก้ไขล่าสุด',
+    col_stage: 'ขั้นตอน',
+    col_breakdown: 'รายละเอียดค่าใช้จ่าย',
+    col_result: 'ผลตรวจ',
+    col_reviewer_note: 'หมายเหตุผู้ตรวจ',
+    col_name: 'ชื่อ',
+    col_email: 'อีเมล',
+    col_role: 'บทบาท',
+    col_active: 'ใช้งาน',
+    col_last_login: 'เข้าใช้ล่าสุด',
+    st_Draft: 'ฉบับร่าง',
+    st_Submitted: 'รอ Admin ตรวจสอบ',
+    st_Checked: 'รอ Manager อนุมัติ',
+    sep_flagged: ' · ติดปัญหา ',
+    suffix_chars: ' ตัวอักษร',
+    suffix_rows: ' บรรทัด',
+    suffix_items: ' รายการ',
+    suffix_items_close: ' รายการ)',
+    sep_on: ' เมื่อ ',
+    suffix_done: ' แล้ว',
+    lock_flow_note: ' — จะส่งให้ Admin ตรวจสอบก่อน แล้วจึงส่งต่อให้ Manager อนุมัติ',
+    reject_edit_note: ' — แก้ไขแล้วกดส่งให้ Admin ตรวจสอบได้เลย เลขที่ใบเบิกยังคงเดิม',
+    lock_readonly_suffix: ' — เปิดดูได้อย่างเดียว',
+    err_amount_positive: ': จำนวนเงินต้องมากกว่า 0',
+    err_no_desc: ': ยังไม่ได้ระบุรายละเอียด',
+    err_no_date: ': ยังไม่ได้ระบุวันที่',
+    err_no_type: ': ยังไม่ได้เลือกประเภทค่าใช้จ่าย',
+    boot_fail_pre: 'โหลดระบบไม่สำเร็จ: ',
+    col_approver: 'Manager ผู้อนุมัติ',
+    err_required_pre: 'กรุณากรอก ',
+    err_need_old_pw: 'กรุณากรอกรหัสผ่านเดิม',
+    err_need_email: 'กรุณากรอกอีเมล',
+    err_need_email_pw: 'กรุณากรอกอีเมลและรหัสผ่าน',
+    err_check_data_pre: 'กรุณาตรวจสอบข้อมูล (',
+    err_save_first: 'กรุณาบันทึกใบเบิกก่อน',
+    err_need_approver: 'กรุณาระบุอีเมล Manager ผู้อนุมัติ',
+    err_register_first: 'กรุณาลงทะเบียนก่อนใช้งาน',
+    busy_working: 'กำลังดำเนินการ…',
+    busy_check_link: 'กำลังตรวจสอบลิงก์…',
+    busy_set_pw: 'กำลังตั้งรหัสผ่าน…',
+    busy_rejecting: 'กำลังตีกลับ…',
+    busy_generic: 'กำลังทำงาน…',
+    busy_save_edits: 'กำลังบันทึกการแก้ไข…',
+    busy_save_review: 'กำลังบันทึกผลตรวจ…',
+    busy_saving: 'กำลังบันทึก…',
+    busy_deleting: 'กำลังลบ…',
+    busy_signup: 'กำลังสมัครสมาชิก…',
+    busy_pdf: 'กำลังสร้าง PDF…',
+    busy_forward: 'กำลังส่งต่อ…',
+    busy_email: 'กำลังส่งอีเมล…',
+    busy_submit: 'กำลังส่งใบเบิก…',
+    busy_approve: 'กำลังอนุมัติ…',
+    busy_login: 'กำลังเข้าสู่ระบบ…',
+    busy_change_pw: 'กำลังเปลี่ยนรหัสผ่าน…',
+    busy_load_inbox: 'กำลังโหลดรายการรอดำเนินการ…',
+    busy_load_me: 'กำลังโหลดข้อมูลผู้ใช้…',
+    busy_load_list: 'กำลังโหลดรายการ…',
+    busy_load_users: 'กำลังโหลดรายชื่อ…',
+    busy_load_claim: 'กำลังโหลดใบเบิก…',
+    ph_msg_checker: 'ข้อความถึงผู้ตรวจสอบ (ไม่บังคับ)',
+    warn_unsaved: 'ข้อมูลที่ยังไม่บันทึกจะหายไป',
+    err_incomplete: 'ข้อมูลยังไม่ครบ',
+    ph_checker_comment: 'ความเห็นของผู้ตรวจสอบ (ไม่บังคับ)',
+    ph_approver_comment: 'ความเห็นผู้อนุมัติ (ไม่บังคับ)',
+    role_superadmin_desc: 'จัดการผู้ใช้และสิทธิ์ (Super Admin)',
+    stage_prepare: 'จัดทำ',
+    role_sale_desc: 'จัดทำและส่งใบเบิกของตัวเอง',
+    col_amount: 'จำนวนเงิน',
+    err_amount_negative: 'จำนวนเงินติดลบไม่ได้',
+    stage_pay_who: 'จ่ายเงิน (Finance)',
+    st_Paid: 'จ่ายเงินแล้ว',
+    stage_check: 'ตรวจสอบ',
+    stage_check_who: 'ตรวจสอบ (Admin)',
+    act_check_pass: 'ตรวจสอบผ่าน',
+    role_admin_desc: 'ตรวจสอบรายการของผู้อื่น (Admin)',
+    reviewed_pre: 'ตรวจแล้ว ',
+    act_set_pw: 'ตั้งรหัสผ่าน',
+    act_reset_pw_for: 'ตั้งรหัสผ่านใหม่ให้ ',
+    col_jobtitle: 'ตำแหน่ง',
+    act_reject: 'ตีกลับ',
+    act_reject_for_edit: 'ตีกลับให้แก้ไข',
+    err_need_one_row: 'ต้องมีรายการค่าใช้จ่ายอย่างน้อย 1 บรรทัด',
+    st_Rejected: 'ต้องแก้ไข',
+    row_no_pre: 'บรรทัดที่ ',
+    tip_multitype: 'บรรทัดนี้มีหลายประเภทรวมกัน แก้ไขได้ในชีต ClaimItems',
+    acct_pre: 'บัญชี ',
+    act_save: 'บันทึก',
+    act_record_payment: 'บันทึกการจ่ายเงิน',
+    role_finance_desc: 'บันทึกการจ่ายเงิน (Finance)',
+    act_mark_paid: 'บันทึกจ่ายเงิน',
+    msg_checked_forward: 'บันทึกผลตรวจแล้วส่งต่อให้ Manager อนุมัติ',
+    err_draft_saved_not_sent: 'บันทึกร่างแล้ว แต่ส่งไม่สำเร็จ',
+    err_save_failed: 'บันทึกไม่สำเร็จ',
+    col_type: 'ประเภทค่าใช้จ่าย',
+    msg_edit_off: 'ปิดโหมดแก้ไขแล้ว',
+    col_period: 'ปี / เดือน',
+    err_pre: 'ผิดพลาด: ',
+    col_creator: 'ผู้จัดทำ',
+    reject_note_pre: 'ผู้จัดทำจะแก้ไขและส่งใหม่ในเลขที่เดิม (',
+    reject_note: 'ผู้จัดทำจะแก้ไขและส่งใหม่ในเลขที่เดิมได้',
+    warn_reset_pw: 'ผู้ใช้จะถูกออกจากระบบทุกเครื่อง และต้องเข้าใหม่ด้วยรหัสผ่านนี้',
+    col_division: 'ฝ่าย / แผนก',
+    total_pre: 'ยอดรวม ',
+    never_signed_in: 'ยังไม่เคยเข้า',
+    act_confirm: 'ยืนยัน',
+    confirm_title: 'ยืนยันการดำเนินการ',
+    confirm_paid_pre: 'ยืนยันว่าได้จ่ายเงินตามใบเบิก ',
+    sum_pre: 'รวม ',
+    grand_total: 'รวมทั้งสิ้น',
+    err_pw_min_pre: 'รหัสผ่านต้องยาวอย่างน้อย ',
+    err_pw_mismatch: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน',
+    ph_new_pw_min_pre: 'รหัสผ่านใหม่ อย่างน้อย ',
+    err_new_pw_min_pre: 'รหัสผ่านใหม่ต้องยาวอย่างน้อย ',
+    err_new_pw_mismatch: 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน',
+    inbox_await_check: 'รอคุณตรวจสอบ',
+    inbox_await_approve: 'รอคุณอนุมัติ',
+    inbox_await_pay: 'รอบันทึกจ่ายเงิน',
+    st_pending_activation: 'รอผู้ดูแลเปิดใช้งาน',
+    ph_reject_detail: 'ระบุสิ่งที่ต้องแก้…',
+    title_reject_reason: 'ระบุเหตุผลที่ตีกลับ',
+    col_description: 'รายละเอียด',
+    act_delete: 'ลบ',
+    tip_delete_row: 'ลบบรรทัดนี้',
+    msg_empty_rows_removed: 'ลบบรรทัดว่างแล้ว',
+    warn_delete_permanent: 'ลบแล้วกู้คืนไม่ได้',
+    title_delete_claim: 'ลบใบเบิก',
+    confirm_delete_pre: 'ลบใบเบิก ',
+    col_liter: 'ลิตร',
+    col_date: 'วันที่',
+    col_claim_date: 'วันที่ยื่น',
+    signup_instant: 'สมัครแล้วเริ่มใช้งานได้ทันที',
+    ph_review_summary: 'สรุปผลการตรวจสอบ (ไม่บังคับ)',
+    msg_pdf_done_pre: 'สร้าง PDF แล้ว: ',
+    first_submit: 'ส่งครั้งแรก',
+    act_send_check: 'ส่งตรวจสอบ',
+    title_forward_manager: 'ส่งต่อให้ Manager อนุมัติ',
+    err_forward_failed: 'ส่งต่อไม่สำเร็จ',
+    col_submitted_at: 'ส่งเมื่อ',
+    title_submit_admin: 'ส่งใบเบิกให้ Admin ตรวจสอบ',
+    act_submit_admin: 'ส่งให้ Admin ตรวจสอบ',
+    act_send_to_check: 'ส่งให้ตรวจสอบ',
+    err_submit_failed: 'ส่งไม่สำเร็จ',
+    label_owner_note: 'หมายเหตุจากผู้จัดทำ',
+    signup_needs_approval: 'หลังสมัคร ผู้ดูแลระบบจะเปิดใช้งานบัญชีให้',
+    opt_multitype: 'หลายประเภทในบรรทัดเดียว',
+    act_approve: 'อนุมัติ',
+    stage_approve_who: 'อนุมัติ (Manager)',
+    st_Approved: 'อนุมัติแล้ว',
+    title_approve_claim: 'อนุมัติใบเบิก',
+    role_manager_desc: 'อนุมัติใบเบิกขั้นสุดท้าย (Manager)',
+    at_least_pre: 'อย่างน้อย ',
+    msg_signed_out: 'ออกจากระบบแล้ว',
+    err_login_failed: 'เข้าสู่ระบบไม่สำเร็จ',
+    was_rejected_at_pre: 'เคยถูกตีกลับในขั้น ',
+    err_session_expired: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
+    col_phone: 'เบอร์ติดต่อ',
+    act_open: 'เปิด',
+    act_open_review: 'เปิดตรวจสอบ',
+    msg_edit_on: 'เปิดโหมดแก้ไข — อย่าลืมกดบันทึกผลตรวจ',
+    title_new_claim: 'เริ่มใบใหม่',
+    act_start_new: 'เริ่มใหม่',
+    ph_payment_ref: 'เลขที่อ้างอิงการจ่าย (ไม่บังคับ)',
+    col_receipt: 'เลขที่ใบเสร็จ',
+    revision_pre: 'แก้ไขครั้งที่ ',
+    act_edit_items: 'แก้ไขรายการ',
+    title_resubmit: 'แก้ไขแล้ว — ส่งตรวจสอบใหม่',
+    act_resubmit: 'แก้ไขแล้วส่งใหม่',
+    err_max_rows_pre: 'แบบฟอร์มรองรับสูงสุด ',
+    col_dept: 'แผนก',
+    tip_support_div: 'แผนกที่รับผิดชอบ',
+    by_pre: 'โดย ',
+    st_active: 'ใช้งานได้',
+    claim_pre: 'ใบเบิก ',
+    rejected_at_pre: 'ใบเบิกถูกตีกลับในขั้น ',
+    claim_status_pre: 'ใบเบิกนี้อยู่ในสถานะ ',
+    badge_new: 'ใบใหม่',
+    err_user_not_found: 'ไม่พบข้อมูลผู้ใช้',
+    opt_pick_type: '— เลือกประเภท —',
+    opt_none: '— ไม่ระบุ —'
+  },
+  en: {
+    ttl_approve_decision: 'Information for your decision',
+    ttl_items_readonly: 'Claim items (read-only)',
+    ttl_approver_comment: 'Approver comment',
+    lbl_amount_to_approve: 'Amount to approve',
+    lbl_checked_by: 'Checked by',
+    lbl_checked_at: 'Checked at',
+    lbl_check_result: 'Check result',
+    lbl_checker_note: 'Checker comment',
+    ttl_fuel: 'Fuel — Fleet Card',
+    fuel_hint: 'Fuel is paid by fleet card, so it is not part of the reimbursement — but the litres and the amount still have to be recorded.',
+    fuel_subtotal: 'Fuel subtotal (not reimbursed)',
+    fuel_row_pre: 'Fuel row ',
+    err_no_liter: ': litres are missing',
+    lbl_fuel_memo: 'Fleet card fuel (not reimbursed):',
+    lbl_not_reimbursed: 'not reimbursed',
+    unit_liter: 'L',
+    unit_baht: 'THB',
+    boot_loading: 'Loading…',
+    tab_login: 'Sign in',
+    tab_signup: 'Sign up',
+    f_email: 'Email',
+    f_password: 'Password',
+    f_confirm_password: 'Confirm password',
+    f_old_password: 'Current password',
+    f_new_password: 'New password',
+    f_confirm_new_password: 'Confirm new password',
+    f_checker_email: 'Checker (Admin) email',
+    f_approver_email: 'Approver (Manager) email',
+    act_login: 'Sign in',
+    act_logout: 'Sign out',
+    act_forgot: 'Forgot password?',
+    act_signup: 'Create account',
+    act_send_reset: 'Send reset link',
+    act_back_login: 'Back to sign in',
+    act_save_new_password: 'Save new password',
+    act_change_password: 'Change password',
+    act_save_changes: 'Save changes',
+    act_add_row: '+ Add row',
+    act_clear_empty: 'Remove empty rows',
+    act_new_claim: 'New claim',
+    act_print_pdf: 'Print / PDF',
+    act_save_draft: 'Save draft',
+    act_refresh: 'Refresh',
+    act_go_inbox: 'Go to my queue',
+    act_back_inbox: 'Back to my queue',
+    act_save_review: 'Save review',
+    act_pass_to_manager: 'Checked → send to Manager',
+    act_mark_all_ok: 'Mark all passed',
+    act_clear_marks: 'Clear marks',
+    act_cancel: 'Cancel',
+    act_ok: 'OK',
+    title_logout: 'Sign out',
+    confirm_logout: 'Do you want to sign out?',
+    err_field_required: 'This field is required',
+    err_load_failed: 'Could not load the data',
+    signup_any_email: 'Sign up with any email address — a Google account is not required.',
+    forgot_help: 'Enter the email you registered with and we will send a reset link (valid for 30 minutes).',
+    reset_for: 'Set a new password for',
+    nav_form: 'Form',
+    nav_list: 'My claims',
+    nav_inbox: 'Waiting on me',
+    nav_review: 'Review',
+    nav_admin: 'Users',
+    nav_profile: 'Profile',
+    ttl_my_profile: 'My profile',
+    hint_my_profile: 'Update your contact details here — only an administrator can change roles.',
+    lbl_account: 'Signed in as',
+    ttl_change_password: 'Change password',
+    hint_change_password: 'Changing it signs you out on every device for security.',
+    ttl_my_permissions: 'Your permissions',
+    ttl_claimant: 'Claimant details',
+    ttl_expense_items: 'Expense items',
+    ttl_by_account: 'Summary by account group',
+    ttl_note_to_checker: 'Note to the checker',
+    ttl_workflow: 'Workflow',
+    ttl_history: 'Action history',
+    ttl_my_claims: 'My claims',
+    ttl_inbox: 'Items waiting on you',
+    ttl_review: 'Review screen',
+    ttl_items_to_review: 'Items to review',
+    ttl_reviewer_comment: 'Reviewer comment',
+    ttl_user_admin: 'Users and permissions',
+    hint_user_admin: 'Admin checks claims · Manager approves · Super Admin manages users — turn off Active to suspend an account.',
+    hint_pick_from_inbox: 'Pick a claim from your queue to check or approve it.',
+    hint_toggle_flag: 'Click the result button to toggle Passed / Flagged.',
+    grid_hint: 'One row is one receipt — pick an expense type and enter a single amount; the system files it into the right Excel column for you. Press Enter for the next row.',
+    lbl_grand_total: 'Grand total',
+    lbl_only_mine: 'Only mine',
+    lbl_claimed_total: 'Claimed total',
+    lbl_edit_numbers: 'Allow editing amounts',
+    empty_claims: 'No claims yet',
+    empty_inbox: 'Nothing is waiting on you right now',
+    empty_users: 'No registrations yet',
+    opt_all_status: 'All statuses',
+    opt_all_roles: 'All roles',
+    opt_status_pending: 'Pending activation',
+    opt_status_active: 'Active',
+    ph_search_claims: 'Search no. / name / dept.',
+    ph_search_users: 'Search name / email / dept.',
+    ph_note: 'Any extra information (optional)',
+    ph_checker_blank: 'Leave blank = send to every Admin',
+    ph_review_comment: 'Review summary, or the reason for sending it back',
+    col_claim_no: 'No.',
+    col_status: 'Status',
+    col_rows: 'Rows',
+    col_total: 'Total',
+    col_updated: 'Updated',
+    col_stage: 'Stage',
+    col_breakdown: 'Expense breakdown',
+    col_result: 'Result',
+    col_reviewer_note: 'Reviewer note',
+    col_name: 'Name',
+    col_email: 'Email',
+    col_role: 'Role',
+    col_active: 'Active',
+    col_last_login: 'Last sign-in',
+    st_Draft: 'Draft',
+    st_Submitted: 'Awaiting Admin check',
+    st_Checked: 'Awaiting Manager approval',
+    sep_flagged: ' · flagged ',
+    suffix_chars: ' characters',
+    suffix_rows: ' rows',
+    suffix_items: ' items',
+    suffix_items_close: ' items)',
+    sep_on: ' on ',
+    suffix_done: '',
+    lock_flow_note: ' — it goes to an Admin for checking first, then on to the Manager for approval.',
+    reject_edit_note: ' — fix it and press Send to Admin again; the claim number stays the same.',
+    lock_readonly_suffix: ' — view only',
+    err_amount_positive: ': amount must be greater than 0',
+    err_no_desc: ': description is missing',
+    err_no_date: ': date is missing',
+    err_no_type: ': expense type not selected',
+    boot_fail_pre: 'Failed to load: ',
+    col_approver: 'Approver',
+    err_required_pre: 'Please fill in ',
+    err_need_old_pw: 'Please enter your current password',
+    err_need_email: 'Please enter your email',
+    err_need_email_pw: 'Please enter email and password',
+    err_check_data_pre: 'Please check the form (',
+    err_save_first: 'Please save the claim first',
+    err_need_approver: 'Please enter the approving Manager email',
+    err_register_first: 'Please complete your registration first',
+    busy_working: 'Working…',
+    busy_check_link: 'Checking link…',
+    busy_set_pw: 'Setting password…',
+    busy_rejecting: 'Sending back…',
+    busy_generic: 'Please wait…',
+    busy_save_edits: 'Saving edits…',
+    busy_save_review: 'Saving review…',
+    busy_saving: 'Saving…',
+    busy_deleting: 'Deleting…',
+    busy_signup: 'Creating account…',
+    busy_pdf: 'Generating PDF…',
+    busy_forward: 'Forwarding…',
+    busy_email: 'Sending email…',
+    busy_submit: 'Submitting claim…',
+    busy_approve: 'Approving…',
+    busy_login: 'Signing in…',
+    busy_change_pw: 'Changing password…',
+    busy_load_inbox: 'Loading your queue…',
+    busy_load_me: 'Loading your profile…',
+    busy_load_list: 'Loading claims…',
+    busy_load_users: 'Loading users…',
+    busy_load_claim: 'Loading claim…',
+    ph_msg_checker: 'Message to the checker (optional)',
+    warn_unsaved: 'Unsaved changes will be lost',
+    err_incomplete: 'Some information is missing',
+    ph_checker_comment: 'Checker comment (optional)',
+    ph_approver_comment: 'Approver comment (optional)',
+    role_superadmin_desc: 'Manage users and permissions (Super Admin)',
+    stage_prepare: 'Prepare',
+    role_sale_desc: 'Create and submit your own claims',
+    col_amount: 'Amount',
+    err_amount_negative: 'Amount cannot be negative',
+    stage_pay_who: 'Payment (Finance)',
+    st_Paid: 'Paid',
+    stage_check: 'Check',
+    stage_check_who: 'Check (Admin)',
+    act_check_pass: 'Mark as checked',
+    role_admin_desc: 'Check other people’s claims (Admin)',
+    reviewed_pre: 'Reviewed ',
+    act_set_pw: 'Set password',
+    act_reset_pw_for: 'Set a new password for ',
+    col_jobtitle: 'Job title',
+    act_reject: 'Send back',
+    act_reject_for_edit: 'Send back for edits',
+    err_need_one_row: 'At least one expense row is required',
+    st_Rejected: 'Needs revision',
+    row_no_pre: 'Row ',
+    tip_multitype: 'This row mixes several expense types — edit it in the ClaimItems sheet',
+    acct_pre: 'Account ',
+    act_save: 'Save',
+    act_record_payment: 'Record payment',
+    role_finance_desc: 'Record payments (Finance)',
+    act_mark_paid: 'Mark paid',
+    msg_checked_forward: 'Review saved and forwarded to the Manager',
+    err_draft_saved_not_sent: 'Draft saved, but submission failed',
+    err_save_failed: 'Save failed',
+    col_type: 'Expense type',
+    msg_edit_off: 'Edit mode off',
+    col_period: 'Year / Month',
+    err_pre: 'Error: ',
+    col_creator: 'Prepared by',
+    reject_note_pre: 'The owner will edit and resubmit under the same number (',
+    reject_note: 'The owner can edit and resubmit under the same number',
+    warn_reset_pw: 'The user is signed out everywhere and must sign in with this password',
+    col_division: 'Division / Dept.',
+    total_pre: 'Total ',
+    never_signed_in: 'Never',
+    act_confirm: 'Confirm',
+    confirm_title: 'Please confirm',
+    confirm_paid_pre: 'Confirm payment for claim ',
+    sum_pre: 'Total ',
+    grand_total: 'Grand total',
+    err_pw_min_pre: 'Password must be at least ',
+    err_pw_mismatch: 'The two passwords do not match',
+    ph_new_pw_min_pre: 'New password, at least ',
+    err_new_pw_min_pre: 'New password must be at least ',
+    err_new_pw_mismatch: 'The two new passwords do not match',
+    inbox_await_check: 'Awaiting your check',
+    inbox_await_approve: 'Awaiting your approval',
+    inbox_await_pay: 'Awaiting payment',
+    st_pending_activation: 'Awaiting activation',
+    ph_reject_detail: 'Describe what needs fixing…',
+    title_reject_reason: 'Reason for sending it back',
+    col_description: 'Description',
+    act_delete: 'Delete',
+    tip_delete_row: 'Delete this row',
+    msg_empty_rows_removed: 'Empty rows removed',
+    warn_delete_permanent: 'This cannot be undone',
+    title_delete_claim: 'Delete claim',
+    confirm_delete_pre: 'Delete claim ',
+    col_liter: 'Liter',
+    col_date: 'Date',
+    col_claim_date: 'Claim date',
+    signup_instant: 'You can start using it right after signing up.',
+    ph_review_summary: 'Review summary (optional)',
+    msg_pdf_done_pre: 'PDF created: ',
+    first_submit: 'First submission',
+    act_send_check: 'Send for checking',
+    title_forward_manager: 'Forward to the Manager for approval',
+    err_forward_failed: 'Forwarding failed',
+    col_submitted_at: 'Submitted',
+    title_submit_admin: 'Send the claim to an Admin for checking',
+    act_submit_admin: 'Send to Admin',
+    act_send_to_check: 'Send for checking',
+    err_submit_failed: 'Submission failed',
+    label_owner_note: 'Note from the owner',
+    signup_needs_approval: 'An administrator will activate your account after you sign up.',
+    opt_multitype: 'Several types in one row',
+    act_approve: 'Approve',
+    stage_approve_who: 'Approve (Manager)',
+    st_Approved: 'Approved',
+    title_approve_claim: 'Approve claim',
+    role_manager_desc: 'Give final approval (Manager)',
+    at_least_pre: 'At least ',
+    msg_signed_out: 'Signed out',
+    err_login_failed: 'Sign-in failed',
+    was_rejected_at_pre: 'Previously sent back at ',
+    err_session_expired: 'Session expired — please sign in again',
+    col_phone: 'Phone',
+    act_open: 'Open',
+    act_open_review: 'Review',
+    msg_edit_on: 'Edit mode on — remember to save the review',
+    title_new_claim: 'Start a new claim',
+    act_start_new: 'Start new',
+    ph_payment_ref: 'Payment reference (optional)',
+    col_receipt: 'Receipt No.',
+    revision_pre: 'Revision ',
+    act_edit_items: 'Edit items',
+    title_resubmit: 'Edited — resubmit for checking',
+    act_resubmit: 'Resubmit',
+    err_max_rows_pre: 'The form supports at most ',
+    col_dept: 'Dept.',
+    tip_support_div: 'Owning department',
+    by_pre: 'by ',
+    st_active: 'Active',
+    claim_pre: 'Claim ',
+    rejected_at_pre: 'This claim was sent back at ',
+    claim_status_pre: 'This claim is ',
+    badge_new: 'New claim',
+    err_user_not_found: 'User not found',
+    opt_pick_type: '— Select a type —',
+    opt_none: '— None —'
+  }
+};
+
+function t(k) {
+  var d = I18N[LANG] || I18N.th;
+  if (k in d) return d[k];
+  return I18N.th[k] !== undefined ? I18N.th[k] : k;
+}
+
+function L(o, field) {
+  if (!o) return '';
+  var f = field || (LANG === 'en' ? 'en' : 'th');
+  var alt = f === 'en' ? 'th' : 'en';
+  return o[f] || o[alt] || '';
+}
+
+function renderIcons() {
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    setTimeout(function() {
+      lucide.createIcons();
+    }, 10);
+  }
+}
+
+function applyTheme(mode) {
+  THEME = mode === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', THEME);
+  try {
+    localStorage.setItem(THEME_KEY, THEME);
+  } catch (e) {}
+  var dark = THEME === 'dark';
+  var html = dark ? '<i data-lucide="sun" class="icon-md"></i>' : '<i data-lucide="moon" class="icon-md"></i>';
+  [ '#themeAuth', '#themeApp' ].forEach(function(sel) {
+    var b = $(sel);
+    if (!b) return;
+    b.innerHTML = html;
+    b.title = dark ? 'Light mode' : 'Dark mode';
+  });
+  renderIcons();
+}
+
+function toggleTheme() {
+  applyTheme(THEME === 'dark' ? 'light' : 'dark');
+}
+
+function applyStatic() {
+  document.documentElement.setAttribute('lang', LANG);
+  $$('[data-i18n]').forEach(function(n) {
+    n.textContent = t(n.getAttribute('data-i18n'));
+  });
+  var other = LANG === 'th' ? 'EN' : 'ไทย';
+  [ '#langAuth', '#langApp' ].forEach(function(sel) {
+    var b = $(sel);
+    if (b) b.innerHTML = '<i data-lucide="globe" class="icon-sm"></i><span>' + other + '</span>';
+  });
+  var ph = {
+    '#fQuery': 'ph_search_claims',
+    '#aQuery': 'ph_search_users',
+    '#note': 'ph_note',
+    '#rvComment': 'ph_review_comment'
+  };
+  Object.keys(ph).forEach(function(sel) {
+    var n = $(sel);
+    if (n) n.setAttribute('placeholder', t(ph[sel]));
+  });
+  var modalTitle = $('#modalTitle');
+  if (modalTitle && !modalTitle.textContent) modalTitle.textContent = t('confirm_title');
+  renderIcons();
+}
+
+function setLang(lang) {
+  LANG = lang === 'en' ? 'en' : 'th';
+  try {
+    localStorage.setItem(LANG_KEY, LANG);
+  } catch (e) {}
+  applyStatic();
+  if (!BOOT) return;
+  rebuildLocalizedUi();
+}
+
+function toggleLang() {
+  setLang(LANG === 'th' ? 'en' : 'th');
+}
+
+function currentView() {
+  var active = $('.tab.is-active');
+  return active ? active.dataset.view : 'form';
+}
+
+function rebuildLocalizedUi() {
+  var header = readHeader();
+  var rows = STATE.rows.slice();
+  var fuelRows = STATE.fuelRows.slice();
+  var wasReadonly = STATE.readonly;
+  var signup = {};
+  BOOT.registerFields.forEach(function(f) {
+    var n = $('#s_' + f.key);
+    if (n) signup[f.key] = n.value;
+  });
+
+  renderShell();
+  buildAuthScreens();
+  buildRegisterFields();
+  buildHeaderFields();
+  buildTableHead();
+  buildSummaryCards();
+
+  writeHeader(header);
+  BOOT.registerFields.forEach(function(f) {
+    var n = $('#s_' + f.key);
+    if (n && signup[f.key] !== undefined) n.value = signup[f.key];
+  });
+
+  $('#itemBody').innerHTML = '';
+  $('#fuelBody').innerHTML = '';
+  STATE.rows = [];
+  STATE.fuelRows = [];
+  rows.forEach(function(r) {
+    addRow(r, true);
+  });
+  fuelRows.forEach(function(r) {
+    addFuelRow(r, true);
+  });
+  if (!STATE.rows.length) addRow(null, true);
+  if (!STATE.fuelRows.length) addFuelRow(null, true);
+  if (wasReadonly) setReadonly(true);
+  recalcTotals();
+
+  if (ME) {
+    applyIdentity();
+    $('#pwHint').textContent = t('at_least_pre') + BOOT.cfg.minPasswordLen + t('suffix_chars');
+  }
+
+  if (STATE.claimId) updateBadge(STATE.status, STATE.claimId); else updateBadge('', t('badge_new'));
+  renderFlowbar(STATE.status);
+
+  if (REVIEW.claimId && REVIEW.claim && REVIEW.res) renderReview(REVIEW.res);
+
+  var view = currentView();
+  if (view === 'list') refreshList();
+  if (view === 'inbox') refreshInbox();
+  if (view === 'admin') refreshAdmin();
+}
+
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || '';
+  } catch (e) {
+    return TOKEN_MEM;
+  }
+}
+
+function setToken(t) {
+  TOKEN_MEM = t || '';
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY);
+  } catch (e) {}
+}
+
+var TOKEN_MEM = '';
+
+var PUBLIC_FNS = [ 'login', 'logout', 'selfRegister', 'requestPasswordReset', 'validateResetToken', 'resetPasswordWithToken' ];
+
+function call(fn, args, msg) {
+  var payload = (args || []).slice();
+  if (PUBLIC_FNS.indexOf(fn) < 0) payload.unshift(getToken());
+  return new Promise(function(resolve, reject) {
+    if (msg) showOverlay(msg);
+    google.script.run.withSuccessHandler(function(res) {
+      hideOverlay();
+      if (res && res.ok === false && res.authRequired) {
+        handleSessionExpired();
+        resolve(res);
+        return;
+      }
+      resolve(res);
+    }).withFailureHandler(function(err) {
+      hideOverlay();
+      if (err && String(err.message || err).indexOf('AUTH_REQUIRED') >= 0) {
+        handleSessionExpired();
+      }
+      reject(err);
+    })[fn].apply(null, payload);
+  });
+}
+
+function handleSessionExpired() {
+  setToken('');
+  ME = null;
+  showAuth('login');
+  toast(t('err_session_expired'), 'err');
+}
+
+function swalReady() {
+  return typeof Swal !== 'undefined';
+}
+
+function swalBase() {
+  var cs = getComputedStyle(document.documentElement);
+  function v(name, dflt) {
+    return (cs.getPropertyValue(name) || '').trim() || dflt;
+  }
+  return {
+    bg: v('--bg-card', '#ffffff'),
+    fg: v('--text-main', '#0f172a'),
+    brand: v('--brand', '#2563eb'),
+    bad: v('--bad', '#dc2626'),
+    muted: v('--text-muted', '#64748b')
+  };
+}
+
+function showOverlay(msg) {
+  if (!swalReady()) {
+    $('#overlayMsg').textContent = msg || t('busy_generic');
+    $('#overlay').hidden = false;
+    return;
+  }
+  var b = swalBase();
+  Swal.fire({
+    title: msg || t('busy_generic'),
+    background: b.bg,
+    color: b.fg,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    heightAuto: false,
+    didOpen: function() {
+      Swal.showLoading();
+    }
+  });
+}
+
+function hideOverlay() {
+  $('#overlay').hidden = true;
+  if (swalReady() && Swal.isVisible() && Swal.getTimerLeft() === undefined) Swal.close();
+}
+
+var toastTimer = null;
+
+function toast(msg, kind) {
+  if (!swalReady()) {
+    var n = $('#toast');
+    n.textContent = msg;
+    n.className = 'toast ' + (kind || '');
+    n.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      n.hidden = true;
+    }, 4e3);
+    return;
+  }
+  var b = swalBase();
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: kind === 'err' ? 'error' : kind === 'ok' ? 'success' : 'info',
+    title: msg,
+    background: b.bg,
+    color: b.fg,
+    showConfirmButton: false,
+    timer: kind === 'err' ? 5e3 : 3e3,
+    timerProgressBar: true,
+    heightAuto: false
+  });
+}
+
+function failLoad(err) {
+  var msg = err && (err.message || err.toString ? err.toString() : String(err)) || String(err);
+  alertErrors([ String(msg) ], t('err_load_failed'));
+}
+
+function alertErrors(list, title) {
+  if (!swalReady() || !list || !list.length) return;
+  var b = swalBase();
+  Swal.fire({
+    icon: 'error',
+    title: title || t('err_incomplete'),
+    html: '<ul class="swal-errlist">' + list.map(function(e) {
+      return '<li>' + escapeText(e) + '</li>';
+    }).join('') + '</ul>',
+    background: b.bg,
+    color: b.fg,
+    confirmButtonText: t('act_ok'),
+    confirmButtonColor: b.brand,
+    heightAuto: false
+  });
+}
+
+function showErrors(list, boxId, title) {
+  var box = $(boxId || '#errors');
+  if (!list || !list.length) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = '';
+  box.appendChild(el('h4', {
+    text: t('err_check_data_pre') + list.length + t('suffix_items_close')
+  }));
+  box.appendChild(el('ul', {}, list.map(function(e) {
+    return el('li', {
+      text: e
+    });
+  })));
+  box.hidden = false;
+  alertErrors(list, title);
+}
+
+function askText(opts) {
+  opts = opts || {};
+  if (!swalReady()) return askTextFallback_(opts);
+  var b = swalBase();
+  var cfg = {
+    title: opts.title || t('confirm_title'),
+    text: opts.desc || '',
+    icon: opts.icon || (opts.danger ? 'warning' : 'question'),
+    background: b.bg,
+    color: b.fg,
+    showCancelButton: true,
+    reverseButtons: true,
+    heightAuto: false,
+    buttonsStyling: true,
+    confirmButtonText: opts.okText || t('act_confirm'),
+    cancelButtonText: t('act_cancel'),
+    confirmButtonColor: opts.danger ? b.bad : b.brand,
+    cancelButtonColor: b.muted
+  };
+  if (!opts.noInput) {
+    cfg.input = 'textarea';
+    cfg.inputValue = opts.value || '';
+    cfg.inputPlaceholder = opts.placeholder || '';
+    cfg.inputAttributes = {
+      rows: '3'
+    };
+    if (opts.required) cfg.inputValidator = function(v) {
+      if (!v || !String(v).trim()) return t('err_field_required');
+    };
+  }
+  return Swal.fire(cfg).then(function(r) {
+    if (!r.isConfirmed) return null;
+    return opts.noInput ? true : String(r.value == null ? '' : r.value).trim();
+  });
+}
+
+function askTextFallback_(opts) {
+  return new Promise(function(resolve) {
+    var modal = $('#modal');
+    $('#modalTitle').textContent = opts.title || t('confirm_title');
+    $('#modalDesc').textContent = opts.desc || '';
+    var input = $('#modalInput');
+    input.value = opts.value || '';
+    input.placeholder = opts.placeholder || '';
+    input.hidden = opts.noInput === true;
+    $('#modalOk').textContent = opts.okText || t('act_confirm');
+    modal.hidden = false;
+    setTimeout(function() {
+      (opts.noInput ? $('#modalOk') : input).focus();
+    }, 40);
+    function done(value) {
+      modal.hidden = true;
+      $('#modalOk').removeEventListener('click', onOk);
+      $('#modalCancel').removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onOk() {
+      var v = input.hidden ? '' : input.value.trim();
+      if (opts.required && !v) {
+        input.classList.add('is-invalid');
+        return;
+      }
+      done(v === '' && !input.hidden ? '' : input.hidden ? true : v);
+    }
+    function onCancel() {
+      done(null);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') onCancel();
+    }
+    $('#modalOk').addEventListener('click', onOk);
+    $('#modalCancel').addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+function bindChromeToggles() {
+  [ '#themeAuth', '#themeApp' ].forEach(function(sel) {
+    var b = $(sel);
+    if (b) b.addEventListener('click', toggleTheme);
+  });
+  [ '#langAuth', '#langApp' ].forEach(function(sel) {
+    var b = $(sel);
+    if (b) b.addEventListener('click', toggleLang);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  applyTheme(THEME);
+  applyStatic();
+  bindChromeToggles();
+  call('getBootstrap', []).then(function(boot) {
+    BOOT = boot;
+    ME = boot.identity;
+    AMOUNT_KEYS = BOOT.itemFields.filter(function(f) {
+      return f.amount;
+    }).map(function(f) {
+      return f.key;
+    });
+    CLAIM_KEYS = BOOT.itemFields.filter(function(f) {
+      return f.amount && !f.fleetCard;
+    }).map(function(f) {
+      return f.key;
+    });
+    var fleet = BOOT.itemFields.filter(function(f) {
+      return f.amount && f.fleetCard;
+    });
+    if (fleet.length) FUEL_KEY = fleet[0].key;
+    renderShell();
+    buildAuthScreens();
+    buildRegisterFields();
+    buildHeaderFields();
+    buildTableHead();
+    buildSummaryCards();
+    bindActions();
+    bindAuthActions();
+    applyStatic();
+    $('#boot').hidden = true;
+    if (RESET_TOKEN) {
+      openResetForm(RESET_TOKEN);
+      return;
+    }
+    if (ME && ME.active) enterApp(); else showAuth('login');
+  }).catch(function(err) {
+    $('#boot').innerHTML = '<p style="color:var(--bad-text);padding:24px;text-align:center">' + t('boot_fail_pre') + (err && err.message ? err.message : err) + '</p>';
+  });
+});
+
+function enterApp() {
+  $('#auth').hidden = true;
+  $('#app').hidden = false;
+  applyIdentity();
+  routeInitial();
+}
+
+function routeInitial() {
+  if (INITIAL_CLAIM_ID && (INITIAL_PAGE === 'review' || INITIAL_PAGE === 'inbox')) {
+    openReview(INITIAL_CLAIM_ID);
+    return;
+  }
+  if (INITIAL_CLAIM_ID) {
+    loadClaim(INITIAL_CLAIM_ID);
+    return;
+  }
+  if (INITIAL_PAGE === 'list' || INITIAL_PAGE === 'inbox' || INITIAL_PAGE === 'admin' || INITIAL_PAGE === 'register') {
+    switchView(INITIAL_PAGE);
+    return;
+  }
+  newClaim();
+  if (ME.isChecker || ME.isApprover || ME.isFinance) {
+    refreshInbox(true).then(function(total) {
+      if (total > 0) switchView('inbox', true);
+    });
+  }
+}
+
+function showAuth(which) {
+  $('#app').hidden = true;
+  $('#auth').hidden = false;
+  showErrors(null, '#authErrors');
+  [ 'login', 'signup', 'forgot', 'reset' ].forEach(function(k) {
+    var form = document.getElementById('auth' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (form) form.hidden = k !== which;
+  });
+  $$('.authtab').forEach(function(n) {
+    n.classList.toggle('is-active', n.dataset.auth === which);
+  });
+  $('.authtabs').hidden = which === 'reset';
+}
+
+function buildAuthScreens() {
+  $('#authTitle span').textContent = BOOT.cfg.company || BOOT.cfg.appTitle;
+  $('#authDocNo').textContent = BOOT.cfg.docNo;
+  $('#pwHint').textContent = t('at_least_pre') + BOOT.cfg.minPasswordLen + t('suffix_chars');
+  $('#signupApprovalNote').textContent = BOOT.cfg.autoApproveRegistration ? t('signup_instant') : t('signup_needs_approval');
+  var wrap = $('#signupFields');
+  wrap.innerHTML = '';
+  BOOT.registerFields.forEach(function(f) {
+    wrap.appendChild(buildProfileField(f, 's_'));
+  });
+}
+
+function buildProfileField(f, prefix) {
+  var id = prefix + f.key;
+  var label = el('label', {
+    for: id
+  });
+  label.appendChild(document.createTextNode(L(f) + ' '));
+  label.appendChild(el('span', {
+    class: 'en',
+    text: '/ ' + (LANG === 'en' ? f.th : f.en)
+  }));
+  if (f.required) label.appendChild(el('span', {
+    class: 'req',
+    text: ' *'
+  }));
+  var input;
+  var list = f.master && BOOT.master[f.master] ? BOOT.master[f.master] : null;
+  if (f.type === 'select') {
+    input = el('select', {
+      id: id
+    });
+    input.appendChild(el('option', {
+      value: '',
+      text: t('opt_none')
+    }));
+    (list || f.options || []).forEach(function(o) {
+      input.appendChild(el('option', {
+        value: o,
+        text: o
+      }));
+    });
+  } else if (list && list.length) {
+    input = el('input', {
+      type: 'text',
+      id: id,
+      list: id + '_dl',
+      autocomplete: 'off'
+    });
+  } else {
+    input = el('input', {
+      type: f.type === 'email' ? 'email' : 'text',
+      id: id,
+      autocomplete: 'off'
+    });
+  }
+  input.addEventListener('input', function() {
+    input.classList.remove('is-invalid');
+  });
+  var field = el('div', {
+    class: 'field'
+  }, [ label, input ]);
+  if (list && list.length && f.type !== 'select') {
+    field.appendChild(el('datalist', {
+      id: id + '_dl'
+    }, list.map(function(v) {
+      return el('option', {
+        value: v
+      });
+    })));
+  }
+  if (f.hint) field.appendChild(el('small', {
+    class: 'fieldhint',
+    text: f.hint
+  }));
+  return field;
+}
+
+function doLogin() {
+  var email = $('#loginEmail').value.trim();
+  var password = $('#loginPassword').value;
+  if (!email || !password) {
+    showErrors([ t('err_need_email_pw') ], '#authErrors');
+    return;
+  }
+  call('login', [ email, password ], t('busy_login')).then(function(res) {
+    if (!res.ok) {
+      showErrors([ res.error || t('err_login_failed') ], '#authErrors');
+      return;
+    }
+    setToken(res.token);
+    $('#loginPassword').value = '';
+    return refreshIdentityThenEnter();
+  }).catch(function(err) {
+    showErrors([ t('err_pre') + (err.message || err) ], '#authErrors');
+  });
+}
+
+function refreshIdentityThenEnter() {
+  return call('getCurrentUser', [], t('busy_load_me')).then(function(res) {
+    if (!res.ok) {
+      showErrors([ t('err_user_not_found') ], '#authErrors');
+      return;
+    }
+    ME = res.identity;
+    return call('getBootstrap', []).then(function(boot) {
+      BOOT = boot;
+      buildRegisterFields();
+      buildHeaderFields();
+      enterApp();
+    });
+  });
+}
+
+function doSignup() {
+  var payload = {
+    email: $('#signupEmail').value.trim(),
+    password: $('#signupPassword').value,
+    confirmPassword: $('#signupConfirm').value
+  };
+  BOOT.registerFields.forEach(function(f) {
+    payload[f.key] = ($('#s_' + f.key) || {}).value || '';
+  });
+  var errors = [];
+  if (!payload.email) errors.push(t('err_need_email'));
+  if (payload.password !== payload.confirmPassword) errors.push(t('err_pw_mismatch'));
+  if ((payload.password || '').length < BOOT.cfg.minPasswordLen) {
+    errors.push(t('err_pw_min_pre') + BOOT.cfg.minPasswordLen + t('suffix_chars'));
+  }
+  BOOT.registerFields.forEach(function(f) {
+    var n = $('#s_' + f.key);
+    var empty = String(payload[f.key] || '').trim() === '';
+    if (n) n.classList.toggle('is-invalid', f.required && empty);
+    if (f.required && empty) errors.push(t('err_required_pre') + '"' + L(f) + '"');
+  });
+  if (errors.length) {
+    showErrors(errors, '#authErrors');
+    return;
+  }
+  call('selfRegister', [ payload ], t('busy_signup')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors || [ res.error ], '#authErrors');
+      return;
+    }
+    if (res.token) {
+      setToken(res.token);
+      return refreshIdentityThenEnter();
+    }
+    showAuth('login');
+    $('#loginEmail').value = payload.email;
+    showNotice(res.message);
+  }).catch(function(err) {
+    showErrors([ t('err_pre') + (err.message || err) ], '#authErrors');
+  });
+}
+
+function showNotice(msg) {
+  var n = $('#authNotice');
+  if (!msg) {
+    n.hidden = true;
+    return;
+  }
+  n.textContent = msg;
+  n.hidden = false;
+}
+
+function doForgot() {
+  var email = $('#forgotEmail').value.trim();
+  if (!email) {
+    showErrors([ t('err_need_email') ], '#authErrors');
+    return;
+  }
+  call('requestPasswordReset', [ email ], t('busy_email')).then(function(res) {
+    showAuth('login');
+    showNotice(res.message);
+  });
+}
+
+function openResetForm(token) {
+  call('validateResetToken', [ token ], t('busy_check_link')).then(function(res) {
+    if (!res.ok) {
+      showAuth('login');
+      showErrors(res.errors, '#authErrors');
+      return;
+    }
+    showAuth('reset');
+    $('#resetEmail').textContent = res.email;
+  });
+}
+
+function doReset() {
+  var pw = $('#resetPassword').value;
+  var confirm = $('#resetConfirm').value;
+  if (pw !== confirm) {
+    showErrors([ t('err_pw_mismatch') ], '#authErrors');
+    return;
+  }
+  call('resetPasswordWithToken', [ RESET_TOKEN, pw ], t('busy_saving')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, '#authErrors');
+      return;
+    }
+    RESET_TOKEN = '';
+    showAuth('login');
+    showNotice(res.message);
+  });
+}
+
+function confirmLogout() {
+  var dirty = BOOT && STATE && !$('#view-form').hidden && !STATE.readonly && (filledRows(GRIDS.exp).length || filledRows(GRIDS.fuel).length) && !STATE.claimId;
+  askText({
+    title: t('title_logout'),
+    desc: dirty ? t('confirm_logout') + ' ' + t('warn_unsaved') : t('confirm_logout'),
+    noInput: true,
+    danger: true,
+    icon: 'question',
+    okText: t('act_logout')
+  }).then(function(ok) {
+    if (ok) doLogout();
+  });
+}
+
+function doLogout() {
+  var token = getToken();
+  setToken('');
+  ME = null;
+  call('logout', [ token ]).then(function() {
+    showAuth('login');
+    showNotice(t('msg_signed_out'));
+  });
+}
+
+function bindAuthActions() {
+  $$('.authtab, [data-auth]').forEach(function(b) {
+    b.addEventListener('click', function() {
+      showAuth(b.dataset.auth);
+      showNotice(null);
+    });
+  });
+  $('#authLogin').addEventListener('submit', function(e) {
+    e.preventDefault();
+    doLogin();
+  });
+  $('#authSignup').addEventListener('submit', function(e) {
+    e.preventDefault();
+    doSignup();
+  });
+  $('#authForgot').addEventListener('submit', function(e) {
+    e.preventDefault();
+    doForgot();
+  });
+  $('#authReset').addEventListener('submit', function(e) {
+    e.preventDefault();
+    doReset();
+  });
+  $('#btnForgot').addEventListener('click', function() {
+    showAuth('forgot');
+    $('#forgotEmail').value = $('#loginEmail').value.trim();
+  });
+  $('#btnLogout').addEventListener('click', confirmLogout);
+  $('#btnChangePassword').addEventListener('click', doChangePassword);
+}
+
+function doChangePassword() {
+  var oldPw = $('#pwOld').value;
+  var newPw = $('#pwNew').value;
+  var confirm = $('#pwConfirm').value;
+  var errors = [];
+  if (!oldPw) errors.push(t('err_need_old_pw'));
+  if (newPw !== confirm) errors.push(t('err_new_pw_mismatch'));
+  if ((newPw || '').length < BOOT.cfg.minPasswordLen) {
+    errors.push(t('err_new_pw_min_pre') + BOOT.cfg.minPasswordLen + t('suffix_chars'));
+  }
+  if (errors.length) {
+    showErrors(errors, '#pwErrors');
+    return;
+  }
+  call('changeMyPassword', [ oldPw, newPw ], t('busy_change_pw')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, '#pwErrors');
+      return;
+    }
+    showErrors(null, '#pwErrors');
+    [ '#pwOld', '#pwNew', '#pwConfirm' ].forEach(function(s) {
+      $(s).value = '';
+    });
+    setToken('');
+    ME = null;
+    showAuth('login');
+    showNotice(res.message);
+  });
+}
+
+function renderShell() {
+  $('#docTitle').textContent = BOOT.cfg.company || BOOT.cfg.docTitle;
+  $('#docNo').textContent = BOOT.cfg.docNo;
+  $('#curLabel').textContent = BOOT.cfg.currency;
+  $('#gridHint').textContent = t('grid_hint');
+
+  var wf = $('#workflowList');
+  wf.innerHTML = '';
+  BOOT.workflow.forEach(function(w) {
+    wf.appendChild(el('li', {
+      text: w
+    }));
+  });
+
+  var sel = $('#fStatus');
+  var keepStatus = sel.value;
+  sel.innerHTML = '';
+  sel.appendChild(el('option', {
+    value: '',
+    text: t('opt_all_status')
+  }));
+  BOOT.statuses.forEach(function(st) {
+    sel.appendChild(el('option', {
+      value: st,
+      text: statusLabel(st)
+    }));
+  });
+  sel.value = keepStatus;
+
+  var roleSel = $('#aRole');
+  var keepRole = roleSel.value;
+  roleSel.innerHTML = '';
+  roleSel.appendChild(el('option', {
+    value: '',
+    text: t('opt_all_roles')
+  }));
+  BOOT.roles.forEach(function(r) {
+    roleSel.appendChild(el('option', {
+      value: r,
+      text: r
+    }));
+  });
+  roleSel.value = keepRole;
+
+  var aSel = $('#aStatus');
+  var keepA = aSel.value;
+  aSel.innerHTML = '';
+  [ [ '', t('opt_all_status') ], [ 'Pending', t('opt_status_pending') ], [ 'Active', t('opt_status_active') ] ].forEach(function(p) {
+    aSel.appendChild(el('option', {
+      value: p[0],
+      text: p[1]
+    }));
+  });
+  aSel.value = keepA;
+}
+
+function applyIdentity() {
+  $('#userName').textContent = ME.name || ME.email;
+  $('#userRole').textContent = ME.role || '';
+  $('#regEmail').textContent = ME.email;
+  $('[data-view="inbox"]').hidden = !(ME.isChecker || ME.isApprover || ME.isFinance || ME.isSuperAdmin);
+  $('[data-view="admin"]').hidden = !ME.isSuperAdmin;
+  var badge = $('#regStatusBadge');
+  badge.hidden = false;
+  badge.className = badgeClass(ME.active ? 'active' : 'pending');
+  badge.textContent = ME.active ? t('st_active') : t('st_pending_activation');
+  fillRegisterForm(ME.profile);
+  renderRolePanel();
+}
+
+function renderRolePanel() {
+  var items = [ {
+    on: true,
+    text: t('role_sale_desc')
+  }, {
+    on: ME.isChecker,
+    text: t('role_admin_desc')
+  }, {
+    on: ME.isApprover,
+    text: t('role_manager_desc')
+  }, {
+    on: ME.isFinance,
+    text: t('role_finance_desc')
+  }, {
+    on: ME.isSuperAdmin,
+    text: t('role_superadmin_desc')
+  } ];
+  var ul = $('#roleList');
+  ul.innerHTML = '';
+  items.forEach(function(i) {
+    ul.appendChild(el('li', {
+      class: i.on ? 'on' : 'off',
+      text: (i.on ? '✓ ' : '× ') + i.text
+    }));
+  });
+  $('#rolePanel').hidden = false;
+}
+
+function buildRegisterFields() {
+  var wrap = $('#registerFields');
+  wrap.innerHTML = '';
+  BOOT.registerFields.forEach(function(f) {
+    wrap.appendChild(buildProfileField(f, 'r_'));
+  });
+}
+
+function fillRegisterForm(profile) {
+  BOOT.registerFields.forEach(function(f) {
+    var n = $('#r_' + f.key);
+    if (n) n.value = profile && profile[f.key] != null ? String(profile[f.key]) : '';
+  });
+}
+
+function submitRegistration() {
+  var payload = {};
+  var errors = [];
+  BOOT.registerFields.forEach(function(f) {
+    var n = $('#r_' + f.key);
+    payload[f.key] = n ? n.value.trim() : '';
+    var empty = payload[f.key] === '';
+    if (n) n.classList.toggle('is-invalid', f.required && empty);
+    if (f.required && empty) errors.push(t('err_required_pre') + '"' + L(f) + '"');
+  });
+  if (errors.length) {
+    showErrors(errors, '#regErrors');
+    return;
+  }
+  showErrors(null, '#regErrors');
+  call('updateMyProfile', [ payload ], t('busy_saving')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, '#regErrors');
+      return;
+    }
+    ME = res.identity;
+    applyIdentity();
+    toast(res.message, 'ok');
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
+  });
+}
+
+function buildHeaderFields() {
+  var wrap = $('#headerFields');
+  wrap.innerHTML = '';
+  BOOT.headerFields.forEach(function(f) {
+    var id = 'h_' + f.key;
+    var label = el('label', {
+      for: id
+    });
+    label.appendChild(document.createTextNode(L(f) + ' '));
+    label.appendChild(el('span', {
+      class: 'en',
+      text: '/ ' + (LANG === 'en' ? f.th : f.en)
+    }));
+    if (f.required) label.appendChild(el('span', {
+      class: 'req',
+      text: ' *'
+    }));
+    var input;
+    var list = f.master && BOOT.master[f.master] ? BOOT.master[f.master] : null;
+    if (f.type === 'month') input = el('input', {
+      type: 'month',
+      id: id
+    }); else if (f.type === 'date') input = el('input', {
+      type: 'date',
+      id: id
+    }); else if (list && list.length) {
+      input = el('input', {
+        type: 'text',
+        id: id,
+        list: id + '_dl',
+        autocomplete: 'off'
+      });
+      wrap.appendChild(el('datalist', {
+        id: id + '_dl'
+      }, list.map(function(v) {
+        return el('option', {
+          value: v
+        });
+      })));
+    } else {
+      input = el('input', {
+        type: 'text',
+        id: id,
+        autocomplete: 'off'
+      });
+    }
+    input.addEventListener('input', function() {
+      input.classList.remove('is-invalid');
+    });
+    wrap.appendChild(el('div', {
+      class: 'field'
+    }, [ label, input ]));
+  });
+}
+
+function readHeader() {
+  var h = {};
+  BOOT.headerFields.forEach(function(f) {
+    h[f.key] = $('#h_' + f.key).value;
+  });
+  return h;
+}
+
+function writeHeader(claim) {
+  BOOT.headerFields.forEach(function(f) {
+    $('#h_' + f.key).value = claim && claim[f.key] != null ? String(claim[f.key]) : '';
+  });
+}
+
+function expenseTypes() {
+  return BOOT.itemFields.filter(function(f) {
+    return f.amount;
+  });
+}
+
+function claimableTypes() {
+  return BOOT.itemFields.filter(function(f) {
+    return f.amount && !f.fleetCard;
+  });
+}
+
+function expenseTypeByKey(key) {
+  var hit = expenseTypes().filter(function(f) {
+    return f.key === key;
+  });
+  return hit.length ? hit[0] : null;
+}
+
+function filledTypeKeys(row) {
+  return CLAIM_KEYS.filter(function(k) {
+    return num(row[k]) !== 0;
+  });
+}
+
+function isFuelItem(row) {
+  return num(row[FUEL_KEY]) !== 0 || num(row.liter) !== 0;
+}
+
+function collapseFuelRow(row) {
+  var r = Object.assign({}, row);
+  r.expenseType = FUEL_KEY;
+  r.amount = num(row[FUEL_KEY]);
+  r.liter = num(row.liter);
+  r.multiType = false;
+  return r;
+}
+
+function expandFuelRow(row) {
+  var r = Object.assign({}, row);
+  AMOUNT_KEYS.forEach(function(k) {
+    r[k] = '';
+  });
+  r[FUEL_KEY] = num(row.amount);
+  r.liter = num(row.liter);
+  delete r.expenseType;
+  delete r.amount;
+  delete r.multiType;
+  return r;
+}
+
+function rowAmount(row) {
+  if (row.multiType) {
+    return CLAIM_KEYS.reduce(function(s, k) {
+      return s + num(row[k]);
+    }, 0);
+  }
+  return num(row.amount);
+}
+
+function collapseRow(row) {
+  var keys = filledTypeKeys(row);
+  var r = Object.assign({}, row);
+  if (keys.length === 1) {
+    r.expenseType = keys[0];
+    r.amount = num(row[keys[0]]);
+    r.multiType = false;
+  } else if (keys.length === 0) {
+    r.expenseType = row.expenseType || '';
+    r.amount = 0;
+    r.multiType = false;
+  } else {
+    r.expenseType = '';
+    r.amount = CLAIM_KEYS.reduce(function(s, k) {
+      return s + num(row[k]);
+    }, 0);
+    r.multiType = true;
+  }
+  return r;
+}
+
+function expandRow(row) {
+  var r = Object.assign({}, row);
+  if (r.multiType) {
+    delete r.expenseType;
+    delete r.amount;
+    delete r.multiType;
+    return r;
+  }
+  AMOUNT_KEYS.forEach(function(k) {
+    if (k !== FUEL_KEY) r[k] = '';
+  });
+  if (r.expenseType) r[r.expenseType] = num(r.amount);
+  delete r.expenseType;
+  delete r.amount;
+  delete r.multiType;
+  return r;
+}
+
+var GRIDS = {
+  exp: {
+    kind: 'exp',
+    rowsKey: 'rows',
+    body: '#itemBody',
+    head: '#headRow',
+    foot: '#footRow',
+    counter: '#rowCounter',
+    totalId: 'ft_total'
+  },
+  fuel: {
+    kind: 'fuel',
+    rowsKey: 'fuelRows',
+    body: '#fuelBody',
+    head: '#fuelHeadRow',
+    foot: '#fuelFootRow',
+    counter: '#fuelCounter',
+    totalId: 'ft_fuel_total'
+  }
+};
+
+function gridRows(grid) {
+  return STATE[grid.rowsKey];
+}
+
+function gridOf(tr) {
+  return tr && tr.parentNode && tr.parentNode.id === 'fuelBody' ? GRIDS.fuel : GRIDS.exp;
+}
+
+function usedRowCount() {
+  return STATE.rows.length + STATE.fuelRows.length;
+}
+
+function gridColumns(grid) {
+  var cols = [
+    { main: 'No.', cls: 'c-no' },
+    { main: t('col_date'), sub: 'Date', cls: 'c-date' },
+    { main: t('col_receipt'), sub: 'Receipt No.', cls: 'c-receiptNo' },
+    { main: t('col_description'), sub: 'Description', cls: 'c-description' },
+    { main: t('col_dept'), sub: 'Support Div.', cls: 'c-supportDiv' }
+  ];
+  if (grid.kind === 'fuel') cols.push({ main: t('col_liter'), sub: 'Liter', cls: 'c-liter' });
+  else cols.push({ main: t('col_type'), sub: 'Expense Type', cls: 'c-type' });
+  cols.push({ main: t('col_amount'), sub: 'Amount', cls: 'c-amount' });
+  cols.push({ main: '', cls: 'c-act' });
+  return cols;
+}
+
+function buildOneHead(grid) {
+  var headRow = $(grid.head);
+  headRow.innerHTML = '';
+  gridColumns(grid).forEach(function(c) {
+    var th = el('th', { class: c.cls });
+    th.appendChild(document.createTextNode(c.main));
+    if (c.sub && LANG !== 'en') th.appendChild(el('small', { text: c.sub }));
+    headRow.appendChild(th);
+  });
+
+  var foot = $(grid.foot);
+  foot.innerHTML = '';
+  foot.appendChild(el('td', { class: 'lbl', colspan: '6', text: grid.kind === 'fuel' ? t('fuel_subtotal') : t('grand_total') }));
+  foot.appendChild(el('td', { class: 'c-amount', id: grid.totalId, text: '0.00' }));
+  foot.appendChild(el('td', { class: 'c-act' }));
+}
+
+function buildTableHead() {
+  buildOneHead(GRIDS.exp);
+  buildOneHead(GRIDS.fuel);
+  $('#gridHint').textContent = t('grid_hint');
+  $('#fuelHint').textContent = t('fuel_hint');
+}
+
+function escapeText(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function findGroup(key) {
+  for (var i = 0; i < BOOT.groups.length; i++) if (BOOT.groups[i].key === key) return BOOT.groups[i];
+  return null;
+}
+
+function defaultSupportDiv() {
+  var opts = supportDivOptions();
+  var mine = ME && ME.profile && ME.profile.defaultSupportDiv;
+  if (mine && opts.indexOf(mine) >= 0) return mine;
+  return opts.length ? opts[0] : '';
+}
+
+function blankRow(grid) {
+  var r = {};
+  BOOT.itemFields.forEach(function(f) {
+    r[f.key] = '';
+  });
+  r.supportDiv = defaultSupportDiv();
+  r.expenseType = grid.kind === 'fuel' ? FUEL_KEY : '';
+  r.amount = '';
+  r.multiType = false;
+  return r;
+}
+
+function addRowTo(grid, data, silent) {
+  if (usedRowCount() >= BOOT.cfg.maxRows) {
+    if (!silent) toast(t('err_max_rows_pre') + BOOT.cfg.maxRows + t('suffix_rows'), 'err');
+    return null;
+  }
+  var row = Object.assign(blankRow(grid), data || {});
+  if (grid.kind === 'fuel') row.expenseType = FUEL_KEY;
+  gridRows(grid).push(row);
+  var tr = buildRowEl(grid, row, gridRows(grid).length);
+  $(grid.body).appendChild(tr);
+  if (STATE.readonly) {
+    $$('input, select', tr).forEach(function(n) {
+      n.disabled = true;
+    });
+  }
+  renumber();
+  return tr;
+}
+
+function addRow(data, silent) {
+  return addRowTo(GRIDS.exp, data, silent);
+}
+
+function addFuelRow(data, silent) {
+  return addRowTo(GRIDS.fuel, data, silent);
+}
+
+function supportDivOptions() {
+  return BOOT.master.supportDivs && BOOT.master.supportDivs.length ? BOOT.master.supportDivs : [ 'BB', 'BP', 'TRC' ];
+}
+
+function buildTypeSelect(row) {
+  var sel = el('select', { class: 'typesel', title: t('col_type') });
+  sel.appendChild(el('option', { value: '', text: t('opt_pick_type') }));
+
+  BOOT.groups.forEach(function(g) {
+    var inGroup = claimableTypes().filter(function(f) {
+      return f.groupKey === g.key;
+    });
+    if (!inGroup.length) return;
+    var og = el('optgroup', { label: L(g) + (g.account ? ' · ' + g.account : '') });
+    inGroup.forEach(function(f) {
+      og.appendChild(el('option', { value: f.key, text: L(f) }));
+    });
+    sel.appendChild(og);
+  });
+
+  if (row.multiType) {
+    sel.appendChild(el('option', { value: '__multi', text: t('opt_multitype') }));
+    sel.value = '__multi';
+  } else {
+    sel.value = row.expenseType || '';
+  }
+  return sel;
+}
+
+function buildRowEl(grid, row, index) {
+  var tr = el('tr');
+  tr.appendChild(el('td', { class: 'c-no', text: String(index) }));
+
+  function cell(cls, input) {
+    var td = el('td', { class: cls });
+    td.appendChild(input);
+    tr.appendChild(td);
+    return input;
+  }
+
+  var dateInput = cell('c-date', el('input', { type: 'date', title: t('col_date') }));
+  var receiptInput = cell('c-receiptNo', el('input', { type: 'text', title: t('col_receipt'), autocomplete: 'off' }));
+  var descInput = cell('c-description', el('input', { type: 'text', title: t('col_description'), autocomplete: 'off' }));
+
+  var divSel = el('select', { title: t('tip_support_div') });
+  divSel.appendChild(el('option', { value: '', text: '—' }));
+  supportDivOptions().forEach(function(o) {
+    divSel.appendChild(el('option', { value: o, text: o }));
+  });
+  cell('c-supportDiv', divSel);
+
+  var fields = [ dateInput, receiptInput, descInput, divSel ];
+  var typeSel = null;
+  var literInput = null;
+
+  if (grid.kind === 'fuel') {
+    literInput = cell('c-liter', el('input', { type: 'number', step: '0.01', min: '0', placeholder: '0.00', title: t('col_liter') }));
+    literInput.dataset.key = 'liter';
+    literInput.value = row.liter === '' || row.liter == null ? '' : row.liter;
+    fields.push(literInput);
+  } else {
+    typeSel = cell('c-type', buildTypeSelect(row));
+    typeSel.dataset.key = 'expenseType';
+    fields.push(typeSel);
+  }
+
+  var amountInput = cell('c-amount', el('input', { type: 'number', step: '0.01', min: '0', placeholder: '0.00', title: t('col_amount') }));
+
+  dateInput.dataset.key = 'date';
+  receiptInput.dataset.key = 'receiptNo';
+  descInput.dataset.key = 'description';
+  divSel.dataset.key = 'supportDiv';
+  amountInput.dataset.key = 'amount';
+
+  dateInput.value = row.date || '';
+  receiptInput.value = row.receiptNo || '';
+  descInput.value = row.description || '';
+  divSel.value = row.supportDiv || '';
+  amountInput.value = row.amount === '' || row.amount == null ? '' : row.amount;
+
+  fields.push(amountInput);
+  fields.forEach(function(n) {
+    n.addEventListener('input', onCellInput);
+    n.addEventListener('change', onCellInput);
+    n.addEventListener('keydown', onCellKeydown);
+  });
+  amountInput.addEventListener('blur', onAmountBlur);
+  if (literInput) literInput.addEventListener('blur', onAmountBlur);
+
+  if (row.multiType && typeSel) {
+    typeSel.disabled = true;
+    amountInput.disabled = true;
+    typeSel.title = t('tip_multitype');
+  }
+
+  var del = el('button', { class: 'rowdel', type: 'button', title: t('tip_delete_row'), text: '×' });
+  del.addEventListener('click', function() {
+    removeRow(tr);
+  });
+  tr.appendChild(el('td', { class: 'c-act' }, [ del ]));
+
+  applyRowType(grid, tr, row);
+  return tr;
+}
+
+function applyRowType(grid, tr, row) {
+  var key = grid.kind === 'fuel' ? FUEL_KEY : row.expenseType;
+  var g = key ? findGroup((expenseTypeByKey(key) || {}).groupKey) : null;
+  tr.style.borderLeft = g ? '4px solid ' + g.color : '4px solid transparent';
+  tr.classList.toggle('is-filled', !isEmptyRow(grid, row));
+}
+
+function onCellInput(e) {
+  var tr = e.target.closest('tr');
+  var grid = gridOf(tr);
+  var idx = rowIndex(grid, tr);
+  if (idx < 0) return;
+
+  var key = e.target.dataset.key;
+  var row = gridRows(grid)[idx];
+
+  if (key === 'expenseType' && e.target.value === '__multi') return;
+  row[key] = e.target.value;
+  if (key === 'expenseType') row.multiType = false;
+
+  applyRowType(grid, tr, row);
+  recalcTotals();
+
+  if (idx === gridRows(grid).length - 1 && !isEmptyRow(grid, row)) {
+    if (usedRowCount() < BOOT.cfg.maxRows) addRowTo(grid, null, true);
+  }
+}
+
+function onAmountBlur(e) {
+  var v = e.target.value;
+  if (v === '') return;
+  var n = num(v);
+  if (n < 0) {
+    e.target.value = '';
+    toast(t('err_amount_negative'), 'err');
+  } else e.target.value = n.toFixed(2);
+  onCellInput(e);
+}
+
+function onCellKeydown(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  var tr = e.target.closest('tr');
+  var grid = gridOf(tr);
+  var next = tr.nextElementSibling;
+  if (!next) {
+    addRowTo(grid, null, true);
+    next = tr.nextElementSibling;
+  }
+  if (!next) return;
+  var target = next.querySelector('[data-key="' + e.target.dataset.key + '"]');
+  if (target) {
+    target.focus();
+    if (target.select) target.select();
+  }
+}
+
+function rowIndex(grid, tr) {
+  return Array.prototype.indexOf.call($(grid.body).children, tr);
+}
+
+function isEmptyRow(grid, row) {
+  if (num(row.amount) !== 0) return false;
+  if (grid.kind === 'fuel') {
+    if (num(row.liter) !== 0) return false;
+    return ![ 'date', 'receiptNo', 'description' ].some(function(k) {
+      return String(row[k] || '').trim() !== '';
+    });
+  }
+  if (row.multiType) return false;
+  return ![ 'date', 'receiptNo', 'description', 'expenseType' ].some(function(k) {
+    return String(row[k] || '').trim() !== '';
+  });
+}
+
+function filledRows(grid) {
+  return gridRows(grid).filter(function(r) {
+    return !isEmptyRow(grid, r);
+  });
+}
+
+function removeRow(tr) {
+  if (STATE.readonly) return;
+  var grid = gridOf(tr);
+  var idx = rowIndex(grid, tr);
+  if (idx < 0) return;
+  gridRows(grid).splice(idx, 1);
+  tr.remove();
+  if (!gridRows(grid).length) addRowTo(grid, null, true);
+  renumber();
+  recalcTotals();
+}
+
+function renumber() {
+  [ GRIDS.exp, GRIDS.fuel ].forEach(function(grid) {
+    $$(grid.body + ' tr').forEach(function(tr, i) {
+      tr.querySelector('td.c-no').textContent = String(i + 1);
+    });
+    $(grid.counter).textContent = filledRows(grid).length + ' / ' + BOOT.cfg.maxRows + t('suffix_rows');
+  });
+}
+
+function recalcTotals() {
+  var sums = {};
+  CLAIM_KEYS.forEach(function(k) {
+    sums[k] = 0;
+  });
+
+  STATE.rows.forEach(function(r) {
+    if (r.multiType) {
+      CLAIM_KEYS.forEach(function(k) {
+        sums[k] += num(r[k]);
+      });
+    } else if (r.expenseType && r.expenseType !== FUEL_KEY) {
+      sums[r.expenseType] += num(r.amount);
+    }
+  });
+
+  var grand = CLAIM_KEYS.reduce(function(s, k) {
+    return s + sums[k];
+  }, 0);
+
+  var fuelAmount = 0;
+  var fuelLiter = 0;
+  STATE.fuelRows.forEach(function(r) {
+    fuelAmount += num(r.amount);
+    fuelLiter += num(r.liter);
+  });
+
+  var totalCell = document.getElementById('ft_total');
+  if (totalCell) totalCell.textContent = money(grand);
+  var fuelCell = document.getElementById('ft_fuel_total');
+  if (fuelCell) fuelCell.textContent = money(fuelAmount);
+  $('#grandTotal').textContent = money(grand);
+  $('#fuelTotalOut').textContent = money(fuelAmount);
+  $('#fuelLiterOut').textContent = money(fuelLiter);
+  var fuelCard = document.getElementById('sum_fuel');
+  if (fuelCard) fuelCard.textContent = money(fuelAmount);
+  var fuelLiterCard = document.getElementById('sum_fuel_liter');
+  if (fuelLiterCard) fuelLiterCard.textContent = money(fuelLiter) + ' ' + t('unit_liter');
+  $('#fuelMemo').hidden = fuelAmount === 0 && fuelLiter === 0;
+
+  BOOT.groups.forEach(function(g) {
+    var keys = claimableTypes().filter(function(f) {
+      return f.groupKey === g.key;
+    }).map(function(f) {
+      return f.key;
+    });
+    if (!keys.length) return;
+    var v = keys.reduce(function(s, k) {
+      return s + sums[k];
+    }, 0);
+    var node = document.getElementById('sum_' + g.key);
+    if (node) node.textContent = money(v);
+  });
+
+  renumber();
+}
+
+function buildSummaryCards() {
+  var wrap = $('#summary');
+  wrap.innerHTML = '';
+  BOOT.groups.forEach(function(g) {
+    var has = BOOT.itemFields.some(function(f) {
+      return f.groupKey === g.key && f.amount;
+    });
+    if (!has) return;
+    var card = el('div', {
+      class: 'sum-card'
+    }, [ el('h4', {
+      html: '<i class="swatch" style="background:' + g.color + '"></i>' + escapeText(L(g))
+    }), el('div', {
+      class: 'acct',
+      text: g.account ? t('acct_pre') + g.account : '—'
+    }), el('div', {
+      class: 'val',
+      id: 'sum_' + g.key,
+      text: '0.00'
+    }) ]);
+    wrap.appendChild(card);
+  });
+
+  var fuelField = BOOT.itemFields.filter(function(f) {
+    return f.key === FUEL_KEY;
+  })[0];
+  if (!fuelField) return;
+  var fuelGroup = findGroup(fuelField.groupKey);
+  wrap.appendChild(el('div', {
+    class: 'sum-card sum-card--fuel'
+  }, [ el('h4', {
+    html: '<i class="swatch swatch--fuel"></i>' + escapeText(t('ttl_fuel'))
+  }), el('div', {
+    class: 'acct',
+    text: (fuelGroup && fuelGroup.account ? t('acct_pre') + fuelGroup.account + ' · ' : '') + t('lbl_not_reimbursed')
+  }), el('div', {
+    class: 'val',
+    id: 'sum_fuel',
+    text: '0.00'
+  }), el('div', {
+    class: 'acct',
+    id: 'sum_fuel_liter',
+    text: '0.00 ' + t('unit_liter')
+  }) ]));
+}
+
+function renderFlowbar(status) {
+  var bar = $('#flowbar');
+  if (!status) {
+    bar.hidden = true;
+    return;
+  }
+  var order = [ 'Draft', 'Submitted', 'Checked', 'Approved' ];
+  if (BOOT.cfg.requirePaymentStep) order.push('Paid');
+  var current = order.indexOf(status);
+  var rejected = status === 'Rejected';
+  bar.innerHTML = '';
+  bar.hidden = false;
+  var labels = [ {
+    s: 'Draft',
+    t: t('stage_prepare'),
+    who: 'Sale'
+  }, {
+    s: 'Submitted',
+    t: t('stage_check'),
+    who: 'Admin'
+  }, {
+    s: 'Checked',
+    t: t('act_approve'),
+    who: 'Manager'
+  }, {
+    s: 'Approved',
+    t: t('st_Approved'),
+    who: ''
+  } ];
+  if (status === 'Paid') labels.push({
+    s: 'Paid',
+    t: t('st_Paid'),
+    who: 'Finance'
+  });
+  labels.forEach(function(l, i) {
+    var state = 'todo';
+    if (rejected && i <= 1) state = i === 0 ? 'done' : 'rejected'; else if (current >= 0 && i < current) state = 'done'; else if (current === i) state = 'current';
+    if (status === 'Paid') state = 'done';
+    bar.appendChild(el('div', {
+      class: 'step step--' + state
+    }, [ el('span', {
+      class: 'step__dot',
+      text: state === 'done' ? '✓' : state === 'rejected' ? '!' : String(i + 1)
+    }), el('span', {
+      class: 'step__label',
+      text: l.t
+    }), l.who ? el('span', {
+      class: 'step__who',
+      text: l.who
+    }) : null ]));
+    if (i < labels.length - 1) bar.appendChild(el('div', {
+      class: 'step__line'
+    }));
+  });
+}
+
+function newClaim() {
+  STATE = {
+    claimId: '',
+    status: 'Draft',
+    rows: [],
+    fuelRows: [],
+    perms: {
+      canEdit: true,
+      canSubmit: true,
+      isOwner: true
+    },
+    readonly: false
+  };
+  writeHeader(null);
+  $('#note').value = '';
+  $('#itemBody').innerHTML = '';
+  $('#fuelBody').innerHTML = '';
+  showErrors(null);
+  $('#historyCard').hidden = true;
+  $('#rejectBanner').hidden = true;
+  $('#lockBanner').hidden = true;
+  var now = new Date;
+  $('#h_yearMonth').value = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+  $('#h_claimDate').value = now.toISOString().slice(0, 10);
+  var p = ME.profile;
+  if (p) {
+    $('#h_employee').value = p.name || '';
+    $('#h_division').value = p.division || '';
+    $('#h_jobTitle').value = p.jobTitle || '';
+  } else {
+    $('#h_employee').value = ME.name || '';
+  }
+  for (var i = 0; i < 5; i++) addRow(null, true);
+  for (var j = 0; j < 2; j++) addFuelRow(null, true);
+  setReadonly(false);
+  updateBadge('', t('badge_new'));
+  $('#btnPdf').disabled = true;
+  renderFlowbar('Draft');
+  applyPermissions({
+    canEdit: true,
+    canSubmit: true,
+    isOwner: true
+  });
+  recalcTotals();
+  switchView('form');
+}
+
+function loadClaim(claimId) {
+  return call('getClaim', [ claimId ], t('busy_load_claim')).then(function(res) {
+    if (!res.ok) {
+      toast(res.errors.join(' '), 'err');
+      return;
+    }
+    var c = res.claim;
+    STATE.claimId = c.claimId;
+    STATE.status = c.status;
+    STATE.perms = res.permissions || {};
+    STATE.rows = [];
+    STATE.fuelRows = [];
+    $('#itemBody').innerHTML = '';
+    $('#fuelBody').innerHTML = '';
+    showErrors(null);
+    writeHeader(c);
+    $('#note').value = c.note || '';
+    res.items.forEach(function(it) {
+      if (isFuelItem(it)) addFuelRow(collapseFuelRow(it), true); else addRow(collapseRow(it), true);
+    });
+    var editable = !!STATE.perms.canEdit;
+    if (editable && usedRowCount() < BOOT.cfg.maxRows) {
+      if (!STATE.rows.length) addRow(null, true);
+      if (!STATE.fuelRows.length) addFuelRow(null, true);
+    }
+    setReadonly(!editable);
+    updateBadge(c.status, c.claimId + (Number(c.revision) ? ' · rev ' + c.revision : ''));
+    $('#btnPdf').disabled = false;
+    renderFlowbar(c.status);
+    renderRejectBanner(c);
+    renderLockBanner(c, editable);
+    renderHistory(res.history, '#historyList', '#historyCard');
+    applyPermissions(STATE.perms);
+    recalcTotals();
+    switchView('form');
+  }).catch(failLoad);
+}
+
+function renderRejectBanner(c) {
+  var b = $('#rejectBanner');
+  if (c.status !== 'Rejected' || !c.rejectReason) {
+    b.hidden = true;
+    return;
+  }
+  b.innerHTML = '';
+  b.appendChild(el('strong', {
+    text: t('rejected_at_pre') + (c.rejectStage || '-')
+  }));
+  b.appendChild(el('p', {
+    text: c.rejectReason
+  }));
+  b.appendChild(el('small', {
+    text: t('by_pre') + (c.rejectedBy || '-') + t('sep_on') + (c.rejectedAt || '-') + t('reject_edit_note')
+  }));
+  b.hidden = false;
+}
+
+function renderLockBanner(c, editable) {
+  var b = $('#lockBanner');
+  if (editable) {
+    b.hidden = true;
+    return;
+  }
+  b.textContent = t('claim_status_pre') + statusLabel(c.status) + t('lock_readonly_suffix');
+  b.hidden = false;
+}
+
+function renderHistory(rows, listSel, cardSel) {
+  var ul = $(listSel);
+  ul.innerHTML = '';
+  if (!rows || !rows.length) {
+    $(cardSel).hidden = true;
+    return;
+  }
+  var actionTh = {
+    Submit: t('act_send_to_check'),
+    Resubmit: t('act_resubmit'),
+    Check: t('act_check_pass'),
+    Approve: t('act_approve'),
+    Reject: t('act_reject'),
+    Pay: t('act_mark_paid'),
+    Edit: t('act_edit_items'),
+    Delete: t('title_delete_claim')
+  };
+  rows.slice().reverse().forEach(function(r) {
+    var li = el('li', {
+      class: 'tl tl--' + String(r.action).toLowerCase()
+    }, [ el('span', {
+      class: 'tl__act',
+      text: actionTh[r.action] || r.action
+    }), el('span', {
+      class: 'tl__who',
+      text: r.actor + (r.role ? ' (' + r.role + ')' : '')
+    }), el('span', {
+      class: 'tl__at',
+      text: r.at
+    }), r.comment ? el('p', {
+      class: 'tl__note',
+      text: r.comment
+    }) : null ]);
+    ul.appendChild(li);
+  });
+  $(cardSel).hidden = false;
+}
+
+function setReadonly(on) {
+  STATE.readonly = !!on;
+  $$('#view-form input, #view-form select, #view-form textarea').forEach(function(n) {
+    n.disabled = !!on;
+  });
+  $('#btnAddRow').disabled = !!on;
+  $('#btnAddFuel').disabled = !!on;
+  $('#btnClearEmpty').disabled = !!on;
+}
+
+function applyPermissions(p) {
+  p = p || {};
+  $('#btnDraft').hidden = !p.canEdit;
+  $('#btnSubmit').hidden = !p.canSubmit;
+  $('#btnCheck').hidden = !p.canCheck;
+  $('#btnApprove').hidden = !p.canApprove;
+  $('#btnReject').hidden = !p.canReject;
+  $('#btnPay').hidden = !p.canPay;
+  $('#btnSubmit').textContent = STATE.status === 'Rejected' ? t('title_resubmit') : t('act_submit_admin');
+}
+
+function updateBadge(status, text) {
+  var b = $('#claimIdBadge');
+  b.textContent = text + (status ? ' · ' + statusLabel(status) : '');
+  b.className = badgeClass(status || 'new');
+}
+
+function collectPayload() {
+  return {
+    claimId: STATE.claimId,
+    header: readHeader(),
+    note: $('#note').value,
+    items: filledRows(GRIDS.exp).map(expandRow).concat(filledRows(GRIDS.fuel).map(expandFuelRow))
+  };
+}
+
+function saveDraft() {
+  if (STATE.readonly) return;
+  showErrors(null);
+  call('saveClaim', [ collectPayload() ], t('busy_saving')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, null, t('err_save_failed'));
+      return;
+    }
+    STATE.claimId = res.claimId;
+    if (!STATE.status || STATE.status === 'Draft') STATE.status = res.status;
+    updateBadge(STATE.status, res.claimId);
+    $('#btnPdf').disabled = false;
+    toast(res.message + ' (' + res.claimId + ')', 'ok');
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
+  });
+}
+
+function submitClaim() {
+  if (STATE.readonly) return;
+  showErrors(null);
+  var local = validateLocal();
+  if (local.length) {
+    showErrors(local, null, t('err_incomplete'));
+    return;
+  }
+  var payload = collectPayload();
+  askText({
+    title: t('title_submit_admin'),
+    desc: t('total_pre') + $('#grandTotal').textContent + ' ' + BOOT.cfg.currency + t('lock_flow_note'),
+    placeholder: t('ph_msg_checker'),
+    okText: t('act_send_check')
+  }).then(function(comment) {
+    if (comment === null) return;
+    payload.comment = comment;
+    return call('saveAndSubmit', [ payload ], t('busy_submit')).then(function(res) {
+      if (!res.ok) {
+        showErrors(res.errors, null, res.savedAsDraft ? t('err_draft_saved_not_sent') : t('err_submit_failed'));
+        if (res.claimId) {
+          STATE.claimId = res.claimId;
+          $('#btnPdf').disabled = false;
+        }
+        return;
+      }
+      toast(res.message, 'ok');
+      loadClaim(res.claimId);
+    });
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
+  });
+}
+
+function validateLocal() {
+  var errors = [];
+  BOOT.headerFields.forEach(function(f) {
+    var input = $('#h_' + f.key);
+    var empty = String(input.value || '').trim() === '';
+    input.classList.toggle('is-invalid', f.required && empty);
+    if (f.required && empty) errors.push(t('err_required_pre') + '"' + L(f) + '"');
+  });
+  var items = filledRows(GRIDS.exp);
+  var fuel = filledRows(GRIDS.fuel);
+  if (!items.length && !fuel.length) errors.push(t('err_need_one_row'));
+  items.forEach(function(r, i) {
+    var n = i + 1;
+    if (!String(r.date || '').trim()) errors.push(t('row_no_pre') + n + t('err_no_date'));
+    if (!String(r.description || '').trim()) errors.push(t('row_no_pre') + n + t('err_no_desc'));
+    if (!r.multiType && !r.expenseType) errors.push(t('row_no_pre') + n + t('err_no_type'));
+    if (rowAmount(r) <= 0) errors.push(t('row_no_pre') + n + t('err_amount_positive'));
+  });
+  fuel.forEach(function(r, i) {
+    var n = t('fuel_row_pre') + (i + 1);
+    if (!String(r.date || '').trim()) errors.push(n + t('err_no_date'));
+    if (num(r.liter) <= 0) errors.push(n + t('err_no_liter'));
+    if (num(r.amount) <= 0) errors.push(n + t('err_amount_positive'));
+  });
+  return errors;
+}
+
+function doStageAction(fn, opts) {
+  askText(opts).then(function(input) {
+    if (input === null) return;
+    var comment = input === true ? '' : input;
+    return call(fn, [ STATE.claimId || REVIEW.claimId, comment ], opts.busy || t('busy_working')).then(function(res) {
+      if (!res.ok) {
+        toast(res.errors.join(' '), 'err');
+        showErrors(res.errors, opts.errorBox || '#errors');
+        return;
+      }
+      toast(res.message, 'ok');
+      if (opts.after) opts.after(res);
+    });
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
+  });
+}
+
+function openReview(claimId) {
+  return call('getClaimForReview', [ claimId ], t('busy_load_claim')).then(function(res) {
+    if (!res.ok) {
+      toast(res.errors.join(' '), 'err');
+      switchView('inbox');
+      return;
+    }
+    REVIEW.claimId = claimId;
+    REVIEW.claim = res.claim;
+    REVIEW.items = res.items.map(function(it) {
+      return Object.assign({}, it, {
+        reviewFlag: it.reviewFlag || '',
+        reviewNote: it.reviewNote || ''
+      });
+    });
+    REVIEW.perms = res.permissions || {};
+    REVIEW.res = res;
+    REVIEW.editMode = false;
+    $('#rvEditMode').checked = false;
+    $('[data-view="review"]').hidden = false;
+    renderReview(res);
+    switchView('review');
+  }).catch(failLoad);
+}
+
+function renderReview(res) {
+  var c = REVIEW.claim;
+  $('#reviewEmpty').hidden = true;
+  $('#reviewPane').hidden = false;
+  $('#rvClaimId').textContent = c.claimId;
+  $('#rvStatus').textContent = statusLabel(c.status);
+  $('#rvStatus').className = badgeClass(c.status);
+  $('#rvRevision').textContent = Number(c.revision) ? t('revision_pre') + c.revision : t('first_submit');
+  var req = res.requester;
+  var meta = [ [ t('col_creator'), c.employee + (c.createdBy ? ' · ' + c.createdBy : '') ], [ t('col_division'), c.division || '-' ], [ t('col_jobtitle'), c.jobTitle || '-' ], [ t('col_period'), c.yearMonth || '-' ], [ t('col_claim_date'), c.claimDate || '-' ], [ t('col_submitted_at'), c.submittedAt || '-' ], [ t('col_approver'), c.approverEmail || '-' ], [ t('col_phone'), req && req.phone || '-' ] ];
+  var dl = $('#rvMeta');
+  dl.innerHTML = '';
+  meta.forEach(function(m) {
+    dl.appendChild(el('dt', {
+      text: m[0]
+    }));
+    dl.appendChild(el('dd', {
+      text: m[1]
+    }));
+  });
+  if (c.note) {
+    dl.appendChild(el('dt', {
+      text: t('label_owner_note')
+    }));
+    dl.appendChild(el('dd', {
+      class: 'wrap',
+      text: c.note
+    }));
+  }
+  $('#rvTotal').textContent = money(c.grandTotal) + ' ' + BOOT.cfg.currency;
+  $('#rvComment').value = c.checkComment || '';
+  var rb = $('#rvRejectBanner');
+  if (c.status === 'Rejected' && c.rejectReason) {
+    rb.innerHTML = '';
+    rb.appendChild(el('strong', {
+      text: t('was_rejected_at_pre') + (c.rejectStage || '-')
+    }));
+    rb.appendChild(el('p', {
+      text: c.rejectReason
+    }));
+    rb.hidden = false;
+  } else rb.hidden = true;
+  renderReviewRows();
+  renderHistory(res.history, '#rvHistory', '#rvHistoryCard');
+  var p = REVIEW.perms;
+  $('#btnRvPass').hidden = !p.canCheck;
+  $('#btnRvApprove').hidden = !p.canApprove;
+  $('#btnRvReject').hidden = !p.canReject;
+  $('#btnRvSaveReview').hidden = !p.canCheck;
+  $('#rvEditMode').parentElement.hidden = !p.canCheck;
+  $('.reviewbulk').hidden = !p.canCheck;
+  $('#rvFlagHint').hidden = !p.canCheck;
+  $('#rvItemsTitle').textContent = p.canCheck ? t('ttl_items_to_review') : t('ttl_items_readonly');
+  $('#rvCommentTitle').textContent = p.canApprove && !p.canCheck ? t('ttl_approver_comment') : t('ttl_reviewer_comment');
+  $('#rvComment').setAttribute('placeholder', p.canApprove && !p.canCheck ? t('ph_approver_comment') : t('ph_review_comment'));
+  $('#rvComment').disabled = !(p.canCheck || p.canApprove);
+  renderDecisionPanel();
+}
+
+function renderDecisionPanel() {
+  var p = REVIEW.perms;
+  var panel = $('#rvDecision');
+  panel.hidden = !p.canApprove;
+  if (panel.hidden) return;
+
+  var c = REVIEW.claim;
+  var claimTotal = REVIEW.items.reduce(function(s, it) {
+    return s + num(it.rowTotal);
+  }, 0);
+  var fuelAmount = REVIEW.items.reduce(function(s, it) {
+    return s + num(it[FUEL_KEY]);
+  }, 0);
+  var fuelLiter = REVIEW.items.reduce(function(s, it) {
+    return s + num(it.liter);
+  }, 0);
+
+  $('#rvDecTotal').textContent = money(claimTotal);
+  $('#rvDecCur').textContent = BOOT.cfg.currency;
+  $('#rvDecCount').textContent = REVIEW.items.length + t('suffix_items');
+
+  var flagged = REVIEW.items.filter(function(it) {
+    return it.reviewFlag === 'flag';
+  }).length;
+  var passed = REVIEW.items.filter(function(it) {
+    return it.reviewFlag === 'ok';
+  }).length;
+
+  var dl = $('#rvDecCheck');
+  dl.innerHTML = '';
+  [ [ t('lbl_checked_by'), c.checkedBy || '-' ], [ t('lbl_checked_at'), c.checkedAt || '-' ], [ t('lbl_check_result'), passed + ' / ' + REVIEW.items.length + t('suffix_items') + (flagged ? t('sep_flagged') + flagged : '') ] ].forEach(function(m) {
+    dl.appendChild(el('dt', { text: m[0] }));
+    dl.appendChild(el('dd', { text: m[1] }));
+  });
+  if (c.checkComment) {
+    dl.appendChild(el('dt', { text: t('lbl_checker_note') }));
+    dl.appendChild(el('dd', { class: 'wrap', text: c.checkComment }));
+  }
+
+  var fuel = $('#rvDecFuel');
+  fuel.hidden = fuelAmount === 0 && fuelLiter === 0;
+  fuel.textContent = t('lbl_fuel_memo') + ' ' + money(fuelLiter) + ' ' + t('unit_liter') + ' · ' + money(fuelAmount) + ' ' + t('unit_baht');
+
+  var wrap = $('#rvDecGroups');
+  wrap.innerHTML = '';
+  BOOT.groups.forEach(function(g) {
+    var keys = claimableTypes().filter(function(f) {
+      return f.groupKey === g.key;
+    }).map(function(f) {
+      return f.key;
+    });
+    if (!keys.length) return;
+    var v = REVIEW.items.reduce(function(sum, it) {
+      return sum + keys.reduce(function(s2, k) {
+        return s2 + num(it[k]);
+      }, 0);
+    }, 0);
+    if (!v) return;
+    wrap.appendChild(el('div', { class: 'sum-card' }, [ el('h4', {
+      html: '<i class="swatch" style="background:' + g.color + '"></i>' + escapeText(L(g))
+    }), el('div', {
+      class: 'acct',
+      text: g.account ? t('acct_pre') + g.account : '—'
+    }), el('div', {
+      class: 'val',
+      text: money(v)
+    }) ]));
+  });
+}
+
+function renderReviewRows() {
+  var body = $('#reviewBody');
+  body.innerHTML = '';
+  REVIEW.items.forEach(function(it, i) {
+    var tr = el('tr', {
+      class: 'rv-' + (it.reviewFlag || 'none')
+    });
+    tr.appendChild(el('td', {
+      class: 'c-no',
+      text: String(it.seq || i + 1)
+    }));
+    tr.appendChild(el('td', {
+      text: it.date || '-'
+    }));
+    tr.appendChild(el('td', {
+      text: it.receiptNo || '-'
+    }));
+    tr.appendChild(el('td', {
+      class: 'wrap',
+      text: it.description || '-'
+    }));
+    tr.appendChild(el('td', {
+      class: 'center',
+      text: it.supportDiv || '-'
+    }));
+    var totalTd = el('td', {
+      class: 'num strong',
+      text: money(it.rowTotal)
+    });
+    tr.appendChild(totalTd);
+    var breakdownTd = el('td', {
+      class: 'c-breakdown'
+    });
+    var breakdown = el('div', {
+      class: 'breakdown'
+    });
+    breakdownTd.appendChild(breakdown);
+    BOOT.itemFields.filter(function(f) {
+      return f.amount;
+    }).forEach(function(f) {
+      var v = num(it[f.key]);
+      if (!v) return;
+      var g = findGroup(f.groupKey);
+      var chip = el('span', {
+        class: 'chip'
+      }, [ el('em', {
+        text: L(f)
+      }), el('b', {
+        text: money(v)
+      }) ]);
+      if (g) {
+        chip.style.background = g.color;
+        chip.style.color = '#1c2433';
+        chip.style.borderColor = g.color;
+      }
+      if (REVIEW.editMode) {
+        chip.innerHTML = '';
+        chip.appendChild(el('em', {
+          text: L(f)
+        }));
+        var inp = el('input', {
+          type: 'number',
+          step: '0.01',
+          min: '0',
+          class: 'chipinput'
+        });
+        inp.value = v;
+        inp.addEventListener('change', function() {
+          it[f.key] = num(inp.value);
+          it.rowTotal = CLAIM_KEYS.reduce(function(s, k) {
+            return s + num(it[k]);
+          }, 0);
+          totalTd.textContent = money(it.rowTotal);
+          renderReviewFoot();
+        });
+        chip.appendChild(inp);
+      }
+      breakdown.appendChild(chip);
+    });
+    if (num(it.liter)) breakdown.appendChild(el('span', {
+      class: 'chip chip--muted'
+    }, [ el('em', {
+      text: t('col_liter')
+    }), el('b', {
+      text: money(it.liter) + ' ' + t('unit_liter')
+    }) ]));
+    tr.appendChild(breakdownTd);
+    var flagTd = el('td', {
+      class: 'c-flag'
+    });
+    var btn = el('button', {
+      type: 'button',
+      class: 'flagbtn'
+    });
+    function paint() {
+      var def = BOOT.reviewFlags.filter(function(f) {
+        return f.key === (it.reviewFlag || '');
+      })[0] || BOOT.reviewFlags[0];
+      btn.textContent = def.icon + ' ' + L(def);
+      btn.style.color = def.color;
+      btn.style.borderColor = def.color;
+      tr.className = 'rv-' + (it.reviewFlag || 'none');
+    }
+    if (REVIEW.perms.canCheck) {
+      btn.addEventListener('click', function() {
+        var keys = BOOT.reviewFlags.map(function(f) {
+          return f.key;
+        });
+        var next = keys[(keys.indexOf(it.reviewFlag || '') + 1) % keys.length];
+        it.reviewFlag = next;
+        paint();
+        renderReviewProgress();
+      });
+    } else {
+      btn.disabled = true;
+      btn.classList.add('flagbtn--static');
+    }
+    paint();
+    flagTd.appendChild(btn);
+    tr.appendChild(flagTd);
+    var noteTd = el('td');
+    if (REVIEW.perms.canCheck) {
+      var note = el('input', {
+        type: 'text',
+        class: 'rvnote',
+        placeholder: t('ph_reject_detail')
+      });
+      note.value = it.reviewNote || '';
+      note.addEventListener('input', function() {
+        it.reviewNote = note.value;
+      });
+      noteTd.appendChild(note);
+    } else {
+      noteTd.className = 'wrap';
+      noteTd.textContent = it.reviewNote || '-';
+    }
+    tr.appendChild(noteTd);
+    body.appendChild(tr);
+  });
+  renderReviewFoot();
+  renderReviewProgress();
+}
+
+function renderReviewFoot() {
+  var total = REVIEW.items.reduce(function(s, it) {
+    return s + num(it.rowTotal);
+  }, 0);
+  var foot = $('#reviewFoot');
+  foot.innerHTML = '';
+  foot.appendChild(el('td', {
+    colspan: '5',
+    text: t('sum_pre') + REVIEW.items.length + t('suffix_items')
+  }));
+  foot.appendChild(el('td', {
+    class: 'num strong',
+    text: money(total)
+  }));
+  foot.appendChild(el('td', {
+    colspan: '3'
+  }));
+  $('#rvTotal').textContent = money(total) + ' ' + BOOT.cfg.currency;
+}
+
+function renderReviewProgress() {
+  var total = REVIEW.items.length;
+  var reviewed = REVIEW.items.filter(function(it) {
+    return it.reviewFlag;
+  }).length;
+  var flagged = REVIEW.items.filter(function(it) {
+    return it.reviewFlag === 'flag';
+  }).length;
+  var pct = total ? Math.round(reviewed / total * 100) : 0;
+  $('#rvBar').style.width = pct + '%';
+  $('#rvBar').style.background = flagged ? '#b45309' : '#10794a';
+  $('#rvProgress').textContent = t('reviewed_pre') + reviewed + ' / ' + total + t('suffix_items') + (flagged ? t('sep_flagged') + flagged : '');
+}
+
+function collectReviews() {
+  return REVIEW.items.map(function(it) {
+    return {
+      seq: it.seq,
+      flag: it.reviewFlag || '',
+      note: it.reviewNote || ''
+    };
+  });
+}
+
+function saveReviewMarks(silent) {
+  return call('saveItemReview', [ REVIEW.claimId, collectReviews(), $('#rvComment').value ], silent ? null : t('busy_save_review')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, '#rvErrors');
+      return res;
+    }
+    showErrors(null, '#rvErrors');
+    if (!silent) toast(res.message, 'ok');
+    return res;
+  });
+}
+
+function saveReviewEdits() {
+  var header = {};
+  BOOT.headerFields.forEach(function(f) {
+    header[f.key] = REVIEW.claim[f.key] || '';
+  });
+  return call('saveClaim', [ {
+    claimId: REVIEW.claimId,
+    header: header,
+    note: REVIEW.claim.note || '',
+    checkerEmail: REVIEW.claim.checkerEmail || '',
+    approverEmail: REVIEW.claim.approverEmail || '',
+    items: REVIEW.items
+  } ], t('busy_save_edits'));
+}
+
+function refreshInbox(silent) {
+  return call('listPendingApprovals', [], silent ? '' : t('busy_load_inbox')).then(function(res) {
+    var body = $('#inboxBody');
+    body.innerHTML = '';
+    $('#inboxEmpty').hidden = res.rows.length > 0;
+    var counts = res.counts || {};
+    var stats = $('#inboxStats');
+    stats.innerHTML = '';
+    [ {
+      n: counts.toCheck || 0,
+      t: t('inbox_await_check'),
+      c: '#2563eb',
+      show: ME.isChecker
+    }, {
+      n: counts.toApprove || 0,
+      t: t('inbox_await_approve'),
+      c: '#10794a',
+      show: ME.isApprover
+    }, {
+      n: counts.toPay || 0,
+      t: t('inbox_await_pay'),
+      c: '#b45309',
+      show: ME.isFinance
+    } ].forEach(function(s) {
+      if (!s.n && !s.show) return;
+      var card = el('div', {
+        class: 'stat'
+      }, [ el('strong', {
+        text: String(s.n)
+      }), el('span', {
+        text: s.t
+      }) ]);
+      card.style.borderLeft = '4px solid ' + s.c;
+      stats.appendChild(card);
+    });
+    var total = (counts.toCheck || 0) + (counts.toApprove || 0) + (counts.toPay || 0);
+    STATE.pendingTotal = total;
+    var pill = $('#inboxCount');
+    pill.textContent = String(total);
+    pill.hidden = total === 0;
+    res.rows.forEach(function(c) {
+      var p = c.permissions || {};
+      var stage = p.canCheck ? t('stage_check_who') : p.canApprove ? t('stage_approve_who') : t('stage_pay_who');
+      var tr = el('tr');
+      tr.appendChild(el('td', {}, [ el('span', {
+        class: 'rowlink',
+        text: c.claimId
+      }) ]));
+      tr.appendChild(el('td', {}, [ el('span', {
+        class: badgeClass(c.status),
+        text: stage
+      }) ]));
+      tr.appendChild(el('td', {
+        text: c.employee || ''
+      }));
+      tr.appendChild(el('td', {
+        text: c.division || ''
+      }));
+      tr.appendChild(el('td', {
+        class: 'num',
+        text: money(c.grandTotal)
+      }));
+      tr.appendChild(el('td', {
+        text: c.submittedAt || ''
+      }));
+      var act = el('td');
+      var open = el('button', {
+        class: 'btn btn--primary btn--sm',
+        type: 'button',
+        text: p.canPay ? t('act_mark_paid') : t('act_open_review')
+      });
+      open.addEventListener('click', function() {
+        if (p.canPay && !p.canCheck && !p.canApprove) {
+          payFromInbox(c.claimId);
+          return;
+        }
+        openReview(c.claimId);
+      });
+      act.appendChild(open);
+      tr.appendChild(act);
+      tr.querySelector('.rowlink').addEventListener('click', function() {
+        openReview(c.claimId);
+      });
+      body.appendChild(tr);
+    });
+    return total;
+  }).catch(failLoad);
+}
+
+function payFromInbox(claimId) {
+  askText({
+    title: t('act_record_payment'),
+    desc: t('confirm_paid_pre') + claimId + t('suffix_done'),
+    placeholder: t('ph_payment_ref'),
+    okText: t('act_mark_paid')
+  }).then(function(comment) {
+    if (comment === null) return;
+    return call('markPaid', [ claimId, comment ], t('busy_saving')).then(function(res) {
+      toast(res.ok ? res.message : res.errors.join(' '), res.ok ? 'ok' : 'err');
+      if (res.ok) refreshInbox();
+    });
+  });
+}
+
+function switchView(view, skipRefresh) {
+  $$('.tab').forEach(function(n) {
+    n.classList.toggle('is-active', n.dataset.view === view);
+  });
+  [ 'form', 'list', 'inbox', 'review', 'admin', 'register' ].forEach(function(v) {
+    var node = document.getElementById('view-' + v);
+    if (node) node.hidden = v !== view;
+  });
+  if (skipRefresh) return;
+  if (view === 'list') refreshList();
+  if (view === 'inbox') refreshInbox();
+  if (view === 'admin') refreshAdmin();
+  if (view === 'review' && !REVIEW.claimId) {
+    $('#reviewEmpty').hidden = false;
+    $('#reviewPane').hidden = true;
+  }
+}
+
+function refreshList() {
+  var filter = {
+    mine: $('#fMine').checked,
+    status: $('#fStatus').value,
+    q: $('#fQuery').value.trim()
+  };
+  call('listClaims', [ filter ], t('busy_load_list')).then(function(res) {
+    var body = $('#claimListBody');
+    body.innerHTML = '';
+    $('#listEmpty').hidden = res.rows.length > 0;
+    res.rows.forEach(function(c) {
+      var tr = el('tr');
+      tr.appendChild(el('td', {}, [ el('span', {
+        class: 'rowlink',
+        text: c.claimId
+      }) ]));
+      tr.appendChild(el('td', {}, [ el('span', {
+        class: badgeClass(c.status),
+        text: statusLabel(c.status)
+      }) ]));
+      tr.appendChild(el('td', {
+        text: c.yearMonth || ''
+      }));
+      tr.appendChild(el('td', {
+        text: c.employee || ''
+      }));
+      tr.appendChild(el('td', {
+        text: c.division || ''
+      }));
+      tr.appendChild(el('td', {
+        class: 'num',
+        text: String(c.itemCount || 0)
+      }));
+      tr.appendChild(el('td', {
+        class: 'num',
+        text: money(c.grandTotal)
+      }));
+      tr.appendChild(el('td', {
+        text: c.updatedAt || ''
+      }));
+      var act = el('td');
+      var open = el('button', {
+        class: 'btn btn--ghost btn--sm',
+        type: 'button',
+        text: t('act_open')
+      });
+      open.addEventListener('click', function() {
+        loadClaim(c.claimId);
+      });
+      act.appendChild(open);
+      if (c.status === 'Draft' && String(c.createdBy).toLowerCase() === ME.email) {
+        var del = el('button', {
+          class: 'btn btn--ghost btn--sm btn--danger',
+          type: 'button',
+          text: t('act_delete')
+        });
+        del.style.marginLeft = '6px';
+        del.addEventListener('click', function() {
+          askText({
+            title: t('confirm_delete_pre') + c.claimId,
+            desc: t('warn_delete_permanent'),
+            noInput: true,
+            okText: t('act_delete')
+          }).then(function(ok) {
+            if (!ok) return;
+            return call('deleteClaim', [ c.claimId ], t('busy_deleting')).then(function(r) {
+              toast(r.ok ? r.message : r.errors.join(' '), r.ok ? 'ok' : 'err');
+              if (r.ok) {
+                refreshList();
+                if (STATE.claimId === c.claimId) newClaim();
+              }
+            });
+          });
+        });
+        act.appendChild(del);
+      }
+      tr.appendChild(act);
+      tr.querySelector('.rowlink').addEventListener('click', function() {
+        loadClaim(c.claimId);
+      });
+      body.appendChild(tr);
+    });
+  }).catch(failLoad);
+}
+
+function refreshAdmin() {
+  var filter = {
+    status: $('#aStatus').value,
+    role: $('#aRole').value,
+    q: $('#aQuery').value.trim()
+  };
+  call('listUsers', [ filter ], t('busy_load_users')).then(function(res) {
+    if (!res.ok) {
+      toast(res.errors.join(' '), 'err');
+      return;
+    }
+    var body = $('#adminBody');
+    body.innerHTML = '';
+    $('#adminEmpty').hidden = res.rows.length > 0;
+    var pending = res.rows.filter(function(r) {
+      return !r.active;
+    }).length;
+    var pill = $('#pendingCount');
+    pill.textContent = String(pending);
+    pill.hidden = pending === 0;
+    res.rows.forEach(function(u) {
+      var tr = el('tr', {
+        class: u.active ? '' : 'row--pending'
+      });
+      tr.appendChild(el('td', {
+        text: u.name || ''
+      }));
+      tr.appendChild(el('td', {
+        class: 'mono',
+        text: u.email
+      }));
+      tr.appendChild(el('td', {
+        text: u.division || ''
+      }));
+      tr.appendChild(el('td', {
+        text: u.jobTitle || ''
+      }));
+      tr.appendChild(el('td', {
+        class: 'mono',
+        text: u.approverEmail || '-'
+      }));
+      var roleTd = el('td');
+      var roleSel = el('select', {
+        class: 'minisel'
+      });
+      res.roles.forEach(function(r) {
+        roleSel.appendChild(el('option', {
+          value: r,
+          text: r
+        }));
+      });
+      roleSel.value = u.role;
+      roleTd.appendChild(roleSel);
+      tr.appendChild(roleTd);
+      var activeTd = el('td', {
+        class: 'center'
+      });
+      var activeBox = el('input', {
+        type: 'checkbox',
+        class: 'chkbox'
+      });
+      activeBox.checked = u.active;
+      activeTd.appendChild(activeBox);
+      tr.appendChild(activeTd);
+      tr.appendChild(el('td', {
+        class: 'muted',
+        text: u.lastLogin ? u.lastLogin.replace('T', ' ') : t('never_signed_in')
+      }));
+      var act = el('td', {
+        class: 'nowrap'
+      });
+      var save = el('button', {
+        class: 'btn btn--primary btn--sm',
+        type: 'button',
+        text: t('act_save')
+      });
+      save.addEventListener('click', function() {
+        call('saveUser', [ u.email, {
+          role: roleSel.value,
+          active: activeBox.checked
+        } ], t('busy_saving')).then(function(r) {
+          toast(r.ok ? r.message : r.errors.join(' '), r.ok ? 'ok' : 'err');
+          if (r.ok) refreshAdmin();
+        });
+      });
+      act.appendChild(save);
+      var reset = el('button', {
+        class: 'btn btn--ghost btn--sm',
+        type: 'button',
+        text: t('act_set_pw')
+      });
+      reset.style.marginLeft = '6px';
+      reset.addEventListener('click', function() {
+        askText({
+          title: t('act_reset_pw_for') + u.email,
+          desc: t('warn_reset_pw'),
+          placeholder: t('ph_new_pw_min_pre') + BOOT.cfg.minPasswordLen + t('suffix_chars'),
+          required: true,
+          okText: t('act_set_pw')
+        }).then(function(pw) {
+          if (pw === null) return;
+          return call('adminResetPassword', [ u.email, pw ], t('busy_set_pw')).then(function(r) {
+            toast(r.ok ? r.message : r.errors.join(' '), r.ok ? 'ok' : 'err');
+          });
+        });
+      });
+      act.appendChild(reset);
+      tr.appendChild(act);
+      body.appendChild(tr);
+    });
+  }).catch(failLoad);
+}
+
+function bindActions() {
+  $$('.tab').forEach(function(n) {
+    n.addEventListener('click', function() {
+      if (!ME.registered && n.dataset.view !== 'register') {
+        toast(t('err_register_first'), 'err');
+        switchView('register');
+        return;
+      }
+      switchView(n.dataset.view);
+    });
+  });
+  $('#btnRegister').addEventListener('click', submitRegistration);
+  $('#btnAddRow').addEventListener('click', function() {
+    addRow();
+  });
+  $('#btnAddFuel').addEventListener('click', function() {
+    addFuelRow();
+  });
+  $('#btnClearEmpty').addEventListener('click', function() {
+    [ GRIDS.exp, GRIDS.fuel ].forEach(function(grid) {
+      var kept = filledRows(grid);
+      STATE[grid.rowsKey] = [];
+      $(grid.body).innerHTML = '';
+      kept.forEach(function(r) {
+        addRowTo(grid, r, true);
+      });
+      addRowTo(grid, null, true);
+    });
+    recalcTotals();
+    toast(t('msg_empty_rows_removed'));
+  });
+  $('#btnNew').addEventListener('click', function() {
+    if (STATE.claimId || filledRows(GRIDS.exp).length || filledRows(GRIDS.fuel).length) {
+      askText({
+        title: t('title_new_claim'),
+        desc: t('warn_unsaved'),
+        noInput: true,
+        okText: t('act_start_new')
+      }).then(function(ok) {
+        if (ok) newClaim();
+      });
+      return;
+    }
+    newClaim();
+  });
+  $('#btnDraft').addEventListener('click', saveDraft);
+  $('#btnSubmit').addEventListener('click', submitClaim);
+  $('#btnCheck').addEventListener('click', function() {
+    doStageAction('checkClaim', {
+      title: t('act_check_pass'),
+      desc: t('title_forward_manager'),
+      placeholder: t('ph_checker_comment'),
+      okText: t('act_check_pass'),
+      after: function() {
+        loadClaim(STATE.claimId);
+      }
+    });
+  });
+  $('#btnApprove').addEventListener('click', function() {
+    doStageAction('approveClaim', {
+      title: t('title_approve_claim'),
+      desc: t('total_pre') + $('#grandTotal').textContent + ' ' + BOOT.cfg.currency,
+      placeholder: t('ph_approver_comment'),
+      okText: t('act_approve'),
+      after: function() {
+        loadClaim(STATE.claimId);
+      }
+    });
+  });
+  $('#btnReject').addEventListener('click', function() {
+    doStageAction('rejectClaim', {
+      title: t('act_reject_for_edit'),
+      desc: t('reject_note'),
+      placeholder: t('title_reject_reason'),
+      required: true,
+      okText: t('act_reject'),
+      after: function() {
+        loadClaim(STATE.claimId);
+      }
+    });
+  });
+  $('#btnPay').addEventListener('click', function() {
+    doStageAction('markPaid', {
+      title: t('act_record_payment'),
+      desc: t('claim_pre') + STATE.claimId,
+      placeholder: t('ph_payment_ref'),
+      okText: t('act_save'),
+      after: function() {
+        loadClaim(STATE.claimId);
+      }
+    });
+  });
+  $('#btnPdf').addEventListener('click', function() {
+    exportPdfFor(STATE.claimId);
+  });
+  $('#btnGoInbox').addEventListener('click', function() {
+    switchView('inbox');
+  });
+  $('#btnRvBack').addEventListener('click', function() {
+    switchView('inbox');
+  });
+  $('#btnRvPdf').addEventListener('click', function() {
+    exportPdfFor(REVIEW.claimId);
+  });
+  $('#rvEditMode').addEventListener('change', function() {
+    REVIEW.editMode = this.checked;
+    renderReviewRows();
+    toast(REVIEW.editMode ? t('msg_edit_on') : t('msg_edit_off'));
+  });
+  $('#btnMarkAllOk').addEventListener('click', function() {
+    REVIEW.items.forEach(function(it) {
+      it.reviewFlag = 'ok';
+    });
+    renderReviewRows();
+  });
+  $('#btnClearMarks').addEventListener('click', function() {
+    REVIEW.items.forEach(function(it) {
+      it.reviewFlag = '';
+      it.reviewNote = '';
+    });
+    renderReviewRows();
+  });
+  $('#btnRvSaveReview').addEventListener('click', function() {
+    var chain = REVIEW.editMode ? saveReviewEdits() : Promise.resolve({
+      ok: true
+    });
+    chain.then(function(res) {
+      if (res && !res.ok) {
+        showErrors(res.errors, '#rvErrors');
+        return;
+      }
+      return saveReviewMarks(false);
+    }).catch(function(err) {
+      toast(t('err_pre') + (err.message || err), 'err');
+    });
+  });
+  $('#btnRvPass').addEventListener('click', function() {
+    askText({
+      title: t('act_check_pass'),
+      desc: t('msg_checked_forward'),
+      value: $('#rvComment').value,
+      placeholder: t('ph_review_summary'),
+      okText: t('act_check_pass')
+    }).then(function(comment) {
+      if (comment === null) return;
+      $('#rvComment').value = comment === true ? '' : comment;
+      var chain = REVIEW.editMode ? saveReviewEdits() : Promise.resolve({
+        ok: true
+      });
+      return chain.then(function(r) {
+        if (r && !r.ok) throw new Error(r.errors.join(' '));
+        return saveReviewMarks(true);
+      }).then(function() {
+        return call('checkClaim', [ REVIEW.claimId, $('#rvComment').value ], t('busy_forward'));
+      }).then(function(res) {
+        if (!res.ok) {
+          showErrors(res.errors, '#rvErrors', t('err_forward_failed'));
+          return;
+        }
+        toast(res.message, 'ok');
+        REVIEW.claimId = '';
+        switchView('inbox');
+      });
+    }).catch(function(err) {
+      toast(t('err_pre') + (err.message || err), 'err');
+    });
+  });
+  $('#btnRvApprove').addEventListener('click', function() {
+    askText({
+      title: t('title_approve_claim'),
+      desc: t('claim_pre') + REVIEW.claimId,
+      placeholder: t('ph_approver_comment'),
+      okText: t('act_approve')
+    }).then(function(comment) {
+      if (comment === null) return;
+      return call('approveClaim', [ REVIEW.claimId, comment === true ? '' : comment ], t('busy_approve')).then(function(res) {
+        if (!res.ok) {
+          showErrors(res.errors, '#rvErrors');
+          return;
+        }
+        toast(res.message, 'ok');
+        REVIEW.claimId = '';
+        switchView('inbox');
+      });
+    });
+  });
+  $('#btnRvReject').addEventListener('click', function() {
+    var flagged = REVIEW.items.filter(function(it) {
+      return it.reviewFlag === 'flag';
+    });
+    var suggested = flagged.map(function(it) {
+      return t('row_no_pre') + it.seq + ': ' + (it.reviewNote || t('st_Rejected'));
+    }).join('\n');
+    askText({
+      title: t('act_reject_for_edit'),
+      desc: t('reject_note_pre') + REVIEW.claimId + ')',
+      value: suggested || $('#rvComment').value,
+      placeholder: t('title_reject_reason'),
+      required: true,
+      okText: t('act_reject')
+    }).then(function(reason) {
+      if (reason === null) return;
+      return saveReviewMarks(true).then(function() {
+        return call('rejectClaim', [ REVIEW.claimId, reason ], t('busy_rejecting'));
+      }).then(function(res) {
+        if (!res.ok) {
+          showErrors(res.errors, '#rvErrors');
+          return;
+        }
+        toast(res.message, 'ok');
+        REVIEW.claimId = '';
+        switchView('inbox');
+      });
+    }).catch(function(err) {
+      toast(t('err_pre') + (err.message || err), 'err');
+    });
+  });
+  $('#btnRefresh').addEventListener('click', refreshList);
+  $('#fMine').addEventListener('change', refreshList);
+  $('#fStatus').addEventListener('change', refreshList);
+  $('#fQuery').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') refreshList();
+  });
+  $('#btnInboxRefresh').addEventListener('click', refreshInbox);
+  $('#btnAdminRefresh').addEventListener('click', refreshAdmin);
+  $('#aStatus').addEventListener('change', refreshAdmin);
+  $('#aRole').addEventListener('change', refreshAdmin);
+  $('#aQuery').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') refreshAdmin();
+  });
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (!$('#view-form').hidden && !STATE.readonly) saveDraft();
+    }
+  });
+  window.addEventListener('beforeunload', function(e) {
+    if (!$('#view-form').hidden && !STATE.readonly && (filledRows(GRIDS.exp).length || filledRows(GRIDS.fuel).length)) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+}
+
+function exportPdfFor(claimId) {
+  if (!claimId) {
+    toast(t('err_save_first'), 'err');
+    return;
+  }
+  call('exportPdf', [ claimId ], t('busy_pdf')).then(function(res) {
+    if (!res.ok) {
+      toast(res.errors.join(' '), 'err');
+      return;
+    }
+    toast(t('msg_pdf_done_pre') + res.name, 'ok');
+    window.open(res.url, '_blank');
+  });
+}
+</script>

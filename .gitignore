@@ -1,0 +1,8 @@
+Secrets.gs
+.clasp.json
+_preview*.html
+node_modules/
+*.log
+~$*
+.DS_Store
+Thumbs.db
