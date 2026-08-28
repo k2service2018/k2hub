@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K2 Expense Claim</title>
+  <meta name="theme-color" content="#e8a13c">
+  <meta name="apple-mobile-web-app-title" content="K2 Expense">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e8a13c'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
+  <style>
+    html, body { margin: 0; padding: 0; background: #f4f6fb; overflow: hidden; height: 100%; height: 100svh; }
+    iframe { display: block; border: 0; width: 100%; height: 100%; height: 100svh; }
+</style>
+</head>
+<body>
+  <iframe
+    src="https://script.google.com/macros/s/AKfycbw-8fEu3AHnyfhDvFBFkWqDdTusDOE-utF2b8aAe7_njCAVRD1_6WR1R1ZYkOJJbCVa/exec"
+    title="K2 Expense Claim"
+    allow="clipboard-write"></iframe>
+
+  <script>
+  (function () {
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var frame = document.querySelector('iframe');
+    function fit() {
+      var h = Math.round(vv.height);
+      document.documentElement.style.height = h + 'px';
+      document.body.style.height = h + 'px';
+      frame.style.position = 'fixed';
+      frame.style.left = Math.round(vv.offsetLeft) + 'px';
+      frame.style.top = Math.round(vv.offsetTop) + 'px';
+      frame.style.width = Math.round(vv.width) + 'px';
+      frame.style.height = h + 'px';
+    }
+    fit();
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    addEventListener('scroll', fit);
+    addEventListener('orientationchange', fit);
+  }());
+  </script>
+</body>
+</html>
