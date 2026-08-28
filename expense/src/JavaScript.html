@@ -147,6 +147,7 @@ var I18N = {
     reset_for: 'ตั้งรหัสผ่านใหม่สำหรับ',
     nav_form: 'แบบฟอร์ม',
     nav_list: 'ใบเบิกของฉัน',
+    nav_list_all: 'ใบเบิกทั้งหมด',
     nav_inbox: 'รอฉันดำเนินการ',
     nav_review: 'ตรวจสอบรายการ',
     nav_admin: 'จัดการผู้ใช้',
@@ -156,7 +157,6 @@ var I18N = {
     lbl_account: 'บัญชีที่ใช้งาน',
     ttl_change_password: 'เปลี่ยนรหัสผ่าน',
     hint_change_password: 'เปลี่ยนแล้วระบบจะออกจากระบบทุกเครื่องเพื่อความปลอดภัย',
-    ttl_my_permissions: 'สิทธิ์การใช้งานของคุณ',
     ttl_claimant: 'ข้อมูลผู้เบิก',
     ttl_expense_items: 'รายการค่าใช้จ่าย',
     ttl_by_account: 'สรุปตามหมวดบัญชี',
@@ -257,9 +257,7 @@ var I18N = {
     err_incomplete: 'ข้อมูลยังไม่ครบ',
     ph_checker_comment: 'ความเห็นของผู้ตรวจสอบ (ไม่บังคับ)',
     ph_approver_comment: 'ความเห็นผู้อนุมัติ (ไม่บังคับ)',
-    role_superadmin_desc: 'จัดการผู้ใช้และสิทธิ์ (Super Admin)',
     stage_prepare: 'จัดทำ',
-    role_sale_desc: 'จัดทำและส่งใบเบิกของตัวเอง',
     col_amount: 'จำนวนเงิน',
     err_amount_negative: 'จำนวนเงินติดลบไม่ได้',
     stage_pay_who: 'จ่ายเงิน (Finance)',
@@ -267,7 +265,6 @@ var I18N = {
     stage_check: 'ตรวจสอบ',
     stage_check_who: 'ตรวจสอบ (Admin)',
     act_check_pass: 'ตรวจสอบผ่าน',
-    role_admin_desc: 'ตรวจสอบรายการของผู้อื่น (Admin)',
     reviewed_pre: 'ตรวจแล้ว ',
     act_set_pw: 'ตั้งรหัสผ่าน',
     act_reset_pw_for: 'ตั้งรหัสผ่านใหม่ให้ ',
@@ -281,7 +278,6 @@ var I18N = {
     acct_pre: 'บัญชี ',
     act_save: 'บันทึก',
     act_record_payment: 'บันทึกการจ่ายเงิน',
-    role_finance_desc: 'บันทึกการจ่ายเงิน (Finance)',
     act_mark_paid: 'บันทึกจ่ายเงิน',
     msg_checked_forward: 'บันทึกผลตรวจแล้วส่งต่อให้ Manager อนุมัติ',
     err_draft_saved_not_sent: 'บันทึกร่างแล้ว แต่ส่งไม่สำเร็จ',
@@ -342,7 +338,6 @@ var I18N = {
     stage_approve_who: 'อนุมัติ (Manager)',
     st_Approved: 'อนุมัติแล้ว',
     title_approve_claim: 'อนุมัติใบเบิก',
-    role_manager_desc: 'อนุมัติใบเบิกขั้นสุดท้าย (Manager)',
     at_least_pre: 'อย่างน้อย ',
     msg_signed_out: 'ออกจากระบบแล้ว',
     err_login_failed: 'เข้าสู่ระบบไม่สำเร็จ',
@@ -434,6 +429,7 @@ var I18N = {
     reset_for: 'Set a new password for',
     nav_form: 'Form',
     nav_list: 'My claims',
+    nav_list_all: 'All claims',
     nav_inbox: 'Waiting on me',
     nav_review: 'Review',
     nav_admin: 'Users',
@@ -443,7 +439,6 @@ var I18N = {
     lbl_account: 'Signed in as',
     ttl_change_password: 'Change password',
     hint_change_password: 'Changing it signs you out on every device for security.',
-    ttl_my_permissions: 'Your permissions',
     ttl_claimant: 'Claimant details',
     ttl_expense_items: 'Expense items',
     ttl_by_account: 'Summary by account group',
@@ -544,9 +539,7 @@ var I18N = {
     err_incomplete: 'Some information is missing',
     ph_checker_comment: 'Checker comment (optional)',
     ph_approver_comment: 'Approver comment (optional)',
-    role_superadmin_desc: 'Manage users and permissions (Super Admin)',
     stage_prepare: 'Prepare',
-    role_sale_desc: 'Create and submit your own claims',
     col_amount: 'Amount',
     err_amount_negative: 'Amount cannot be negative',
     stage_pay_who: 'Payment (Finance)',
@@ -554,7 +547,6 @@ var I18N = {
     stage_check: 'Check',
     stage_check_who: 'Check (Admin)',
     act_check_pass: 'Mark as checked',
-    role_admin_desc: 'Check other people’s claims (Admin)',
     reviewed_pre: 'Reviewed ',
     act_set_pw: 'Set password',
     act_reset_pw_for: 'Set a new password for ',
@@ -568,7 +560,6 @@ var I18N = {
     acct_pre: 'Account ',
     act_save: 'Save',
     act_record_payment: 'Record payment',
-    role_finance_desc: 'Record payments (Finance)',
     act_mark_paid: 'Mark paid',
     msg_checked_forward: 'Review saved and forwarded to the Manager',
     err_draft_saved_not_sent: 'Draft saved, but submission failed',
@@ -629,7 +620,6 @@ var I18N = {
     stage_approve_who: 'Approve (Manager)',
     st_Approved: 'Approved',
     title_approve_claim: 'Approve claim',
-    role_manager_desc: 'Give final approval (Manager)',
     at_least_pre: 'At least ',
     msg_signed_out: 'Signed out',
     err_login_failed: 'Sign-in failed',
@@ -1119,7 +1109,8 @@ function routeInitial() {
     }
   }
   newClaim();
-  if (ME.isChecker || ME.isApprover || ME.isFinance) switchView('inbox');
+  if (ME.isSuperAdmin) switchView('list');
+  else if (ME.isChecker || ME.isApprover || ME.isFinance) switchView('inbox');
   else if (!ME.canClaim) switchView('register');
 }
 
@@ -1493,42 +1484,16 @@ function applyIdentity() {
   $('[data-view="inbox"]').hidden = !(ME.isChecker || ME.isApprover || ME.isFinance || ME.isSuperAdmin);
   $('[data-view="admin"]').hidden = !ME.isSuperAdmin;
   $('[data-view="form"]').hidden = !ME.canClaim;
-  $('[data-view="list"]').hidden = !ME.canClaim;
+  var listTab = $('[data-view="list"]');
+  listTab.hidden = !ME.canClaim && !ME.isSuperAdmin && !ME.isFinance;
+  listTab.textContent = t(ME.isSuperAdmin || ME.isFinance ? 'nav_list_all' : 'nav_list');
   var badge = $('#regStatusBadge');
   badge.hidden = false;
   badge.className = badgeClass(ME.active ? 'active' : 'pending');
   badge.textContent = ME.active ? t('st_active') : t('st_pending_activation');
   fillRegisterForm(ME.profile);
-  renderRolePanel();
 }
 
-function renderRolePanel() {
-  var items = [ {
-    on: true,
-    text: t('role_sale_desc')
-  }, {
-    on: ME.isChecker,
-    text: t('role_admin_desc')
-  }, {
-    on: ME.isApprover,
-    text: t('role_manager_desc')
-  }, {
-    on: ME.isFinance,
-    text: t('role_finance_desc')
-  }, {
-    on: ME.isSuperAdmin,
-    text: t('role_superadmin_desc')
-  } ];
-  var ul = $('#roleList');
-  ul.innerHTML = '';
-  items.forEach(function(i) {
-    ul.appendChild(el('li', {
-      class: i.on ? 'on' : 'off',
-      text: (i.on ? '✓ ' : '× ') + i.text
-    }));
-  });
-  $('#rolePanel').hidden = false;
-}
 
 function buildRegisterFields() {
   var wrap = $('#registerFields');
@@ -2900,17 +2865,17 @@ function refreshInbox() {
       n: counts.toCheck || 0,
       t: t('inbox_await_check'),
       c: '#2563eb',
-      show: ME.isChecker
+      show: ME.checkerDuty || ME.isSuperAdmin
     }, {
       n: counts.toApprove || 0,
       t: t('inbox_await_approve'),
       c: '#10794a',
-      show: ME.isApprover
+      show: ME.approverDuty || ME.isSuperAdmin
     }, {
       n: counts.toPay || 0,
       t: t('inbox_await_pay'),
       c: '#b45309',
-      show: ME.isFinance
+      show: ME.financeDuty || ME.isSuperAdmin
     } ].forEach(function(s) {
       if (!s.n && !s.show) return;
       var card = el('div', {
@@ -2929,7 +2894,7 @@ function refreshInbox() {
     pill.hidden = total === 0;
     res.rows.forEach(function(c) {
       var p = c.permissions || {};
-      var stage = p.canCheck ? t('stage_check_who') : p.canApprove ? t('stage_approve_who') : t('stage_pay_who');
+      var stage = p.queueCheck ? t('stage_check_who') : p.queueApprove ? t('stage_approve_who') : t('stage_pay_who');
       var tr = el('tr');
       tr.appendChild(el('td', {}, [ el('span', {
         class: 'rowlink',
@@ -2956,10 +2921,10 @@ function refreshInbox() {
       var open = el('button', {
         class: 'btn btn--primary btn--sm',
         type: 'button',
-        text: p.canPay ? t('act_mark_paid') : t('act_open_review')
+        text: p.queuePay ? t('act_mark_paid') : t('act_open_review')
       });
       open.addEventListener('click', function() {
-        if (p.canPay && !p.canCheck && !p.canApprove) {
+        if (p.queuePay && !p.queueCheck && !p.queueApprove) {
           payFromInbox(c.claimId);
           return;
         }

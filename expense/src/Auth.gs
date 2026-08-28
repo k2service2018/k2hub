@@ -203,6 +203,9 @@ function identityFor_(session) {
   var role = user ? user.Role || ROLES.SALE : session.role || ROLES.SALE;
   var superAdmin = role === ROLES.SUPER_ADMIN;
   var active = isActive_(user);
+  var checkerDuty = active && role === ROLES.ADMIN || isAssignedIn_('CheckerEmail', session.email);
+  var approverDuty = active && role === ROLES.MANAGER || isAssignedIn_('ApproverEmail', session.email);
+  var financeDuty = role === ROLES.FINANCE || CFG.FINANCE_EMAILS.map(normEmail_).indexOf(normEmail_(session.email)) >= 0;
   return {
     email: normEmail_(session.email),
     name: user && user.FullName || session.name || session.email,
@@ -211,9 +214,12 @@ function identityFor_(session) {
     registered: !!user,
     profile: user ? profileOf_(user) : null,
     isSuperAdmin: superAdmin,
-    isFinance: superAdmin || role === ROLES.FINANCE || CFG.FINANCE_EMAILS.map(normEmail_).indexOf(normEmail_(session.email)) >= 0,
-    isChecker: superAdmin || active && role === ROLES.ADMIN || isAssignedIn_('CheckerEmail', session.email),
-    isApprover: superAdmin || active && role === ROLES.MANAGER || isAssignedIn_('ApproverEmail', session.email),
+    isFinance: superAdmin || financeDuty,
+    isChecker: superAdmin || checkerDuty,
+    isApprover: superAdmin || approverDuty,
+    checkerDuty: checkerDuty,
+    approverDuty: approverDuty,
+    financeDuty: financeDuty,
     canClaim: superAdmin || CFG.ROLES_NO_CLAIM.indexOf(role) < 0
   };
 }

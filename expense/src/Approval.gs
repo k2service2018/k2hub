@@ -79,11 +79,42 @@ function canEditClaim_(claim, me) {
   return false;
 }
 
+function orphanStage_(role) {
+  return !roleEmails_(role).length;
+}
+
+function queueCheck_(claim, me) {
+  if (claim.status !== 'Submitted') return false;
+  if (normEmail_(claim.createdBy) === me.email) return false;
+  var assigned = normEmail_(claim.checkerEmail);
+  if (assigned) return assigned === me.email;
+  if (me.checkerDuty) return true;
+  return me.isSuperAdmin && orphanStage_(ROLES.ADMIN);
+}
+
+function queueApprove_(claim, me) {
+  if (claim.status !== 'Checked') return false;
+  if (normEmail_(claim.createdBy) === me.email) return false;
+  var assigned = normEmail_(claim.approverEmail);
+  if (assigned) return assigned === me.email;
+  if (me.approverDuty) return true;
+  return me.isSuperAdmin && orphanStage_(ROLES.MANAGER);
+}
+
+function queuePay_(claim, me) {
+  if (claim.status !== 'Approved') return false;
+  if (me.financeDuty) return true;
+  return me.isSuperAdmin && orphanStage_(ROLES.FINANCE) && !CFG.FINANCE_EMAILS.length;
+}
+
 function claimPermissions_(claim, me) {
   me = me || me_();
   var isOwner = normEmail_(claim.createdBy) === me.email;
   return {
     isOwner: isOwner,
+    queueCheck: queueCheck_(claim, me),
+    queueApprove: queueApprove_(claim, me),
+    queuePay: queuePay_(claim, me),
     canEdit: canEditClaim_(claim, me),
     canSubmit: isOwner && EDITABLE_STATUSES.indexOf(claim.status) >= 0,
     canCheck: claim.status === 'Submitted' && canCheckClaim_(claim, me),
@@ -506,20 +537,20 @@ function listPendingApprovals(token) {
     c.statusLabel = statusLabel_(c.status);
     return c;
   }).filter(function(c) {
-    return c.permissions.canCheck || c.permissions.canApprove || c.permissions.canPay;
+    return c.permissions.queueCheck || c.permissions.queueApprove || c.permissions.queuePay;
   });
   return safeOut_({
     ok: true,
     rows: rows,
     counts: {
       toCheck: rows.filter(function(c) {
-        return c.permissions.canCheck;
+        return c.permissions.queueCheck;
       }).length,
       toApprove: rows.filter(function(c) {
-        return c.permissions.canApprove;
+        return c.permissions.queueApprove;
       }).length,
       toPay: rows.filter(function(c) {
-        return c.permissions.canPay;
+        return c.permissions.queuePay;
       }).length
     }
   });
