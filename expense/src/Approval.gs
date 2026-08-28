@@ -61,10 +61,19 @@ function approverPool_(approver, me) {
   return pool.length ? pool : superAdminEmails_();
 }
 
+function effectiveApprover_(claim) {
+  var assigned = normEmail_(claim.approverEmail);
+  if (!assigned) return '';
+  if (assigned === normEmail_(claim.checkedBy)) return '';
+  if (assigned === normEmail_(claim.createdBy)) return '';
+  return assigned;
+}
+
 function canApproveClaim_(claim, me) {
   if (me.isSuperAdmin) return true;
   if (normEmail_(claim.createdBy) === me.email) return false;
-  var assigned = normEmail_(claim.approverEmail);
+  if (normEmail_(claim.checkedBy) === me.email) return false;
+  var assigned = effectiveApprover_(claim);
   if (assigned) return assigned === me.email;
   return me.isApprover;
 }
@@ -95,7 +104,8 @@ function queueCheck_(claim, me) {
 function queueApprove_(claim, me) {
   if (claim.status !== 'Checked') return false;
   if (normEmail_(claim.createdBy) === me.email) return false;
-  var assigned = normEmail_(claim.approverEmail);
+  if (normEmail_(claim.checkedBy) === me.email) return false;
+  var assigned = effectiveApprover_(claim);
   if (assigned) return assigned === me.email;
   if (me.approverDuty) return true;
   return me.isSuperAdmin && orphanStage_(ROLES.MANAGER);
@@ -337,10 +347,16 @@ function checkClaim(token, claimId, comment) {
         errors: [ 'คุณไม่มีสิทธิ์ตรวจสอบใบเบิกนี้' ]
       };
     }
-    var approver = normEmail_(claim.approverEmail);
+    var approver = effectiveApprover_({
+      approverEmail: claim.approverEmail,
+      createdBy: claim.createdBy,
+      checkedBy: me.email
+    });
     var approverPool = approverPool_(approver, {
       email: normEmail_(claim.createdBy),
       isSuperAdmin: false
+    }).filter(function(e) {
+      return e !== me.email;
     });
     if (!approverPool.length) return {
       ok: false,
@@ -363,6 +379,7 @@ function checkClaim(token, claimId, comment) {
       checkedBy: me.email,
       checkedAt: now,
       checkComment: comment || '',
+      approverEmail: approver,
       updatedBy: me.email,
       updatedAt: now
     });
