@@ -137,9 +137,9 @@ function renderFormSheet_(claimId) {
     sh.getRange(36 + i, 2, 1, 3).merge().setValue(i + 1 + '. ' + w).setFontSize(8);
   });
   var signCols = {
-    prepared: 7,
-    received: 12,
-    approved: 17
+    prepared: 6,
+    received: 11,
+    approved: 16
   };
   SIGN_BLOCKS.forEach(function(b) {
     var c = signCols[b.key];
