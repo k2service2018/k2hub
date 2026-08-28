@@ -1117,11 +1117,7 @@ function routeInitial() {
     return;
   }
   newClaim();
-  if (ME.isChecker || ME.isApprover || ME.isFinance) {
-    refreshInbox(true).then(function(total) {
-      if (total > 0) switchView('inbox', true);
-    });
-  }
+  if (ME.isChecker || ME.isApprover || ME.isFinance) switchView('inbox');
 }
 
 function showAuth(which) {
@@ -2886,8 +2882,8 @@ function saveReviewEdits() {
   } ], t('busy_save_edits'));
 }
 
-function refreshInbox(silent) {
-  return call('listPendingApprovals', [], silent ? '' : t('busy_load_inbox')).then(function(res) {
+function refreshInbox() {
+  return call('listPendingApprovals', [], t('busy_load_inbox')).then(function(res) {
     var body = $('#inboxBody');
     body.innerHTML = '';
     $('#inboxEmpty').hidden = res.rows.length > 0;
@@ -2922,7 +2918,6 @@ function refreshInbox(silent) {
       stats.appendChild(card);
     });
     var total = (counts.toCheck || 0) + (counts.toApprove || 0) + (counts.toPay || 0);
-    STATE.pendingTotal = total;
     var pill = $('#inboxCount');
     pill.textContent = String(total);
     pill.hidden = total === 0;
@@ -2990,7 +2985,7 @@ function payFromInbox(claimId) {
   });
 }
 
-function switchView(view, skipRefresh) {
+function switchView(view) {
   $$('.tab').forEach(function(n) {
     n.classList.toggle('is-active', n.dataset.view === view);
   });
@@ -2998,7 +2993,6 @@ function switchView(view, skipRefresh) {
     var node = document.getElementById('view-' + v);
     if (node) node.hidden = v !== view;
   });
-  if (skipRefresh) return;
   if (view === 'list') refreshList();
   if (view === 'inbox') refreshInbox();
   if (view === 'admin') refreshAdmin();
