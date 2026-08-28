@@ -30,7 +30,8 @@ function getDashboard(token, filter) {
     totals: { claim: 0, fuel: 0, spend: 0, liter: 0, claims: 0, items: 0 },
     byType: [],
     byGroup: [],
-    byPerson: []
+    byPerson: [],
+    byMonth: []
   };
 
   var claimsSh = sheet_(CFG.CLAIMS_SHEET, CLAIM_COLUMNS);
@@ -56,7 +57,7 @@ function getDashboard(token, filter) {
     if (wantMonth && ym !== wantMonth) return;
     if (wantStatus && c.status !== wantStatus) return;
 
-    picked[String(c.claimId)] = who;
+    picked[String(c.claimId)] = { email: who.email, name: who.name, ym: ym };
     claimCount++;
   });
 
@@ -65,6 +66,7 @@ function getDashboard(token, filter) {
   var byType = {};
   claimable.forEach(function(f) { byType[f.key] = 0; });
   var byPerson = {};
+  var byMonth = {};
   var totalClaim = 0, totalFuel = 0, totalLiter = 0, itemCount = 0;
 
   var itemsSh = sheet_(CFG.ITEMS_SHEET, ITEM_COLUMNS);
@@ -94,12 +96,21 @@ function getDashboard(token, filter) {
       p.claim += rowClaim;
       p.fuel += rowFuel;
       p.liter += rowLiter;
+
+      if (who.ym) {
+        var m = byMonth[who.ym];
+        if (!m) m = byMonth[who.ym] = { ym: who.ym, claim: 0, fuel: 0, claims: 0 };
+        m.claim += rowClaim;
+        m.fuel += rowFuel;
+      }
     });
   }
 
   Object.keys(picked).forEach(function(cid) {
     var p = byPerson[picked[cid].email];
     if (p) p.claims++;
+    var m = byMonth[picked[cid].ym];
+    if (m) m.claims++;
   });
 
   var groupTotals = {};
@@ -137,6 +148,13 @@ function getDashboard(token, filter) {
     },
     byType: typeRows,
     byGroup: groupRows,
-    byPerson: personRows
+    byPerson: personRows,
+    byMonth: Object.keys(byMonth).sort().map(function(k) {
+      var m = byMonth[k];
+      m.claim = round2_(m.claim);
+      m.fuel = round2_(m.fuel);
+      m.spend = round2_(m.claim + m.fuel);
+      return m;
+    })
   });
 }

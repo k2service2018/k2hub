@@ -323,10 +323,23 @@
       <p class="hint" id="dashEmpty" hidden data-i18n="hint_dash_empty"></p>
 
       <div id="dashBody" hidden>
-        <h3 class="dash__h" data-i18n="ttl_by_group"></h3>
-        <div id="dashGroups"></div>
+        <div class="chart-grid">
+          <div class="chart">
+            <h3 class="dash__h" data-i18n="ttl_by_group"></h3>
+            <div id="dashGroups"></div>
+          </div>
+          <div class="chart" id="dashTrendWrap" hidden>
+            <h3 class="dash__h" data-i18n="ttl_trend"></h3>
+            <div class="chart__scroll" id="dashTrend"></div>
+            <ul class="legend legend--flat">
+              <li><i style="background:#2563eb"></i><span class="legend__name" data-i18n="card_claimable"></span></li>
+              <li><i style="background:#d97706"></i><span class="legend__name" data-i18n="card_fuelcard"></span></li>
+            </ul>
+          </div>
+        </div>
 
         <h3 class="dash__h" data-i18n="ttl_by_type"></h3>
+        <div id="dashTypeBars"></div>
         <div class="table-wrap">
           <table class="list" id="dashTypes">
             <thead>
@@ -343,6 +356,7 @@
 
         <div id="dashPeopleWrap" hidden>
           <h3 class="dash__h" data-i18n="ttl_by_person"></h3>
+          <div id="dashPeopleBars"></div>
           <div class="table-wrap">
             <table class="list" id="dashPeople">
               <thead>

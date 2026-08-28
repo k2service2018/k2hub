@@ -160,6 +160,8 @@ var I18N = {
     ttl_dashboard_mine: 'สรุปค่าใช้จ่ายของฉัน',
     ttl_by_group: 'แยกตามหมวดบัญชี',
     ttl_by_type: 'แยกตามประเภทค่าใช้จ่าย',
+    ttl_trend: 'แนวโน้มรายเดือน',
+    not_claimed: 'ไม่เบิก',
     ttl_by_person: 'แยกตามผู้เบิก',
     col_expense_type: 'ประเภทค่าใช้จ่าย',
     col_account_group: 'หมวดบัญชี',
@@ -477,6 +479,8 @@ var I18N = {
     ttl_dashboard_mine: 'My spending',
     ttl_by_group: 'By account group',
     ttl_by_type: 'By expense type',
+    ttl_trend: 'Monthly trend',
+    not_claimed: 'not claimed',
     ttl_by_person: 'By person',
     col_expense_type: 'Expense type',
     col_account_group: 'Account group',
@@ -2985,6 +2989,116 @@ function saveReviewEdits() {
 
 var DASH = { loaded: false };
 
+var CHART_COLORS = [ '#2563eb', '#d97706', '#10794a', '#7c3aed', '#dc2626', '#0891b2', '#c026d3', '#65a30d', '#e11d48', '#0d9488' ];
+
+function chartColor(i) {
+  return CHART_COLORS[i % CHART_COLORS.length];
+}
+
+function svgEl(name, attrs) {
+  var n = document.createElementNS('http://www.w3.org/2000/svg', name);
+  Object.keys(attrs || {}).forEach(function(k) {
+    n.setAttribute(k, attrs[k]);
+  });
+  return n;
+}
+
+function donutArc(cx, cy, rOuter, rInner, from, to) {
+  var big = to - from > Math.PI ? 1 : 0;
+  var x1 = cx + rOuter * Math.cos(from), y1 = cy + rOuter * Math.sin(from);
+  var x2 = cx + rOuter * Math.cos(to), y2 = cy + rOuter * Math.sin(to);
+  var x3 = cx + rInner * Math.cos(to), y3 = cy + rInner * Math.sin(to);
+  var x4 = cx + rInner * Math.cos(from), y4 = cy + rInner * Math.sin(from);
+  return [ 'M', x1, y1, 'A', rOuter, rOuter, 0, big, 1, x2, y2, 'L', x3, y3, 'A', rInner, rInner, 0, big, 0, x4, y4, 'Z' ].join(' ');
+}
+
+function renderDonut(host, rows, total, labelOf) {
+  host.innerHTML = '';
+  if (!rows.length || !total) return;
+  var box = el('div', { class: 'chart__donut' });
+  var svg = svgEl('svg', { viewBox: '0 0 200 200', class: 'donut' });
+  var angle = -Math.PI / 2;
+  rows.forEach(function(r, i) {
+    var slice = r.amount / total * Math.PI * 2;
+    if (slice <= 0) return;
+    var path = svgEl('path', { d: donutArc(100, 100, 92, 56, angle, angle + Math.min(slice, Math.PI * 2 - 0.0001)), fill: chartColor(i) });
+    path.appendChild(svgEl('title', {})).textContent = labelOf(r) + ' · ' + money(r.amount);
+    svg.appendChild(path);
+    angle += slice;
+  });
+  var mid = svgEl('text', { x: 100, y: 96, 'text-anchor': 'middle', class: 'donut__num' });
+  mid.textContent = money(total);
+  var sub = svgEl('text', { x: 100, y: 116, 'text-anchor': 'middle', class: 'donut__cap' });
+  sub.textContent = BOOT.cfg.currency;
+  svg.appendChild(mid);
+  svg.appendChild(sub);
+  box.appendChild(svg);
+
+  var legend = el('ul', { class: 'legend' });
+  rows.forEach(function(r, i) {
+    var dot = el('i');
+    dot.style.background = chartColor(i);
+    legend.appendChild(el('li', {}, [ dot,
+      el('span', { class: 'legend__name', text: labelOf(r) }),
+      el('span', { class: 'legend__val', text: money(r.amount) + ' · ' + (Math.round(r.amount / total * 1000) / 10) + '%' }) ]));
+  });
+  box.appendChild(legend);
+  host.appendChild(box);
+}
+
+function renderColumns(host, rows) {
+  host.innerHTML = '';
+  if (!rows.length) return;
+  var peak = rows.reduce(function(m, r) { return Math.max(m, r.claim + r.fuel); }, 0) || 1;
+  var w = Math.max(rows.length * 74, 220);
+  var svg = svgEl('svg', { viewBox: '0 0 ' + w + ' 190', class: 'columns', preserveAspectRatio: 'xMidYMid meet' });
+  [ 0, 0.5, 1 ].forEach(function(f) {
+    var y = 150 - f * 130;
+    svg.appendChild(svgEl('line', { x1: 0, y1: y, x2: w, y2: y, class: 'grid' }));
+  });
+  rows.forEach(function(r, i) {
+    var x = i * 74 + 20;
+    var hClaim = r.claim / peak * 130;
+    var hFuel = r.fuel / peak * 130;
+    var bar = svgEl('rect', { x: x, y: 150 - hClaim, width: 34, height: Math.max(hClaim, 0), rx: 4, fill: CHART_COLORS[0] });
+    bar.appendChild(svgEl('title', {})).textContent = r.ym + ' · ' + t('card_claimable') + ' ' + money(r.claim);
+    svg.appendChild(bar);
+    if (hFuel > 0) {
+      var f2 = svgEl('rect', { x: x, y: 150 - hClaim - hFuel, width: 34, height: hFuel, rx: 4, fill: CHART_COLORS[1] });
+      f2.appendChild(svgEl('title', {})).textContent = r.ym + ' · ' + t('card_fuelcard') + ' ' + money(r.fuel);
+      svg.appendChild(f2);
+    }
+    var val = svgEl('text', { x: x + 17, y: 150 - hClaim - hFuel - 7, 'text-anchor': 'middle', class: 'col__val' });
+    val.textContent = money(r.claim + r.fuel);
+    svg.appendChild(val);
+    var lab = svgEl('text', { x: x + 17, y: 170, 'text-anchor': 'middle', class: 'col__lab' });
+    lab.textContent = r.ym;
+    svg.appendChild(lab);
+  });
+  host.appendChild(svg);
+}
+
+function renderRankBars(host, rows, labelOf, valueOf) {
+  host.innerHTML = '';
+  if (!rows.length) return;
+  var peak = rows.reduce(function(m, r) { return Math.max(m, valueOf(r)); }, 0) || 1;
+  rows.forEach(function(r, i) {
+    var v = valueOf(r);
+    var row = el('div', { class: 'bar' });
+    var head = el('div', { class: 'bar__head' });
+    head.appendChild(el('span', { class: 'bar__name', text: labelOf(r) }));
+    head.appendChild(el('span', { class: 'bar__val', text: money(v) }));
+    row.appendChild(head);
+    var track = el('div', { class: 'bar__track' });
+    var fill = el('span');
+    fill.style.width = Math.max(v / peak * 100, 1.5) + '%';
+    fill.style.background = chartColor(i);
+    track.appendChild(fill);
+    row.appendChild(track);
+    host.appendChild(row);
+  });
+}
+
 function dashFilter() {
   return {
     person: $('#dPerson').hidden ? '' : $('#dPerson').value,
@@ -3057,22 +3171,15 @@ function renderDash(res) {
   if (none) return;
 
   var base = tot.claim || 1;
-  var groups = $('#dashGroups');
-  groups.innerHTML = '';
-  res.byGroup.forEach(function(g) {
-    var pct = Math.round(g.amount / base * 1000) / 10;
-    var row = el('div', { class: 'bar' });
-    var head = el('div', { class: 'bar__head' });
-    head.appendChild(el('span', { class: 'bar__name', text: L(g) + (g.account ? ' · ' + g.account : '') }));
-    head.appendChild(el('span', { class: 'bar__val', text: money(g.amount) + ' · ' + pct + '%' }));
-    row.appendChild(head);
-    var track = el('div', { class: 'bar__track' });
-    var fill = el('span');
-    fill.style.width = Math.max(pct, 1) + '%';
-    fill.style.background = g.color;
-    track.appendChild(fill);
-    row.appendChild(track);
-    groups.appendChild(row);
+  renderDonut($('#dashGroups'), res.byGroup, tot.claim, function(g) {
+    return L(g) + (g.account ? ' · ' + g.account : '');
+  });
+  $('#dashTrendWrap').hidden = (res.byMonth || []).length < 2;
+  renderColumns($('#dashTrend'), res.byMonth || []);
+  renderRankBars($('#dashTypeBars'), res.byType, function(ty) {
+    return L(ty);
+  }, function(ty) {
+    return ty.amount;
   });
 
   var tbody = $('#dashTypeBody');
@@ -3087,10 +3194,25 @@ function renderDash(res) {
       el('td', { class: 'num muted', text: pct + '%' })
     ]));
   });
+  if (tot.fuel) {
+    var fuelField = expenseTypeByKey(FUEL_KEY) || {};
+    var fg = findGroup(fuelField.groupKey) || {};
+    tbody.appendChild(el('tr', { class: 'row--fuel' }, [
+      el('td', { text: L(fuelField) }),
+      el('td', { class: 'muted', text: L(fg) + (fg.account ? ' · ' + fg.account : '') }),
+      el('td', { class: 'num', text: money(tot.fuel) }),
+      el('td', { class: 'num muted', text: t('not_claimed') })
+    ]));
+  }
 
   var wrap = $('#dashPeopleWrap');
   wrap.hidden = !res.seesAll || res.byPerson.length < 2;
   if (!wrap.hidden) {
+    renderRankBars($('#dashPeopleBars'), res.byPerson, function(p) {
+      return p.name;
+    }, function(p) {
+      return p.spend;
+    });
     var pbody = $('#dashPeopleBody');
     pbody.innerHTML = '';
     res.byPerson.forEach(function(p) {
