@@ -47,7 +47,7 @@ function insertLogo_(sh) {
   var id = secret_('LOGO_FILE_ID');
   if (!id) return;
   try {
-    var img = sh.insertImage(DriveApp.getFileById(id).getBlob(), LAST_COL - 2, 1, 8, 4);
+    var img = sh.insertImage(DriveApp.getFileById(id).getBlob(), LAST_COL - 2, 3, 8, 14);
     img.setWidth(100).setHeight(85);
   } catch (e) {}
 }
@@ -68,8 +68,8 @@ function renderFormSheet_(claimId) {
     sh.getRange(r, 3, 1, 3).merge().setValue(claim[f.key] || '').setFontSize(9).setNumberFormat('@').setHorizontalAlignment('left').setVerticalAlignment('middle').setBorder(null, null, true, null, null, null, '#666666', SpreadsheetApp.BorderStyle.SOLID);
   });
   sh.getRange(2, 6, 4, 7).merge().setValue((CFG.COMPANY ? CFG.COMPANY + '\n' : '') + CFG.DOC_TITLE).setFontSize(20).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
-  sh.getRange(1, LAST_COL).setValue(CFG.DOC_NO).setFontSize(8).setHorizontalAlignment('right');
-  sh.getRange(2, LAST_COL).setValue(claim.claimId).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('right');
+  sh.getRange(1, LAST_COL - 5, 1, 6).merge().setValue(CFG.DOC_NO).setFontSize(8).setHorizontalAlignment('right');
+  sh.getRange(2, LAST_COL - 5, 1, 6).merge().setValue(claim.claimId).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('right');
   insertLogo_(sh);
   var groupSpans = {};
   ITEM_FIELDS.forEach(function(f) {
@@ -159,7 +159,9 @@ function renderFormSheet_(claimId) {
   sh.setColumnWidth(6, 42);
   for (var cc = 7; cc <= LAST_COL - 1; cc++) sh.setColumnWidth(cc, 58);
   sh.setColumnWidth(LAST_COL, 70);
-  for (var hr = 1; hr <= 6; hr++) sh.setRowHeight(hr, 21);
+  sh.setRowHeight(1, 21);
+  sh.setRowHeight(2, 21);
+  for (var hr = 3; hr <= 6; hr++) sh.setRowHeight(hr, 28);
   sh.setRowHeight(7, 30);
   sh.setRowHeight(8, 34);
   SpreadsheetApp.flush();
