@@ -3050,14 +3050,15 @@ function renderColumns(host, rows) {
   host.innerHTML = '';
   if (!rows.length) return;
   var peak = rows.reduce(function(m, r) { return Math.max(m, r.claim + r.fuel); }, 0) || 1;
-  var w = Math.max(rows.length * 74, 220);
+  var slot = 74;
+  var w = rows.length * slot;
   var svg = svgEl('svg', { viewBox: '0 0 ' + w + ' 190', class: 'columns', preserveAspectRatio: 'xMidYMid meet' });
   [ 0, 0.5, 1 ].forEach(function(f) {
     var y = 150 - f * 130;
     svg.appendChild(svgEl('line', { x1: 0, y1: y, x2: w, y2: y, class: 'grid' }));
   });
   rows.forEach(function(r, i) {
-    var x = i * 74 + 20;
+    var x = i * slot + 20;
     var hClaim = r.claim / peak * 130;
     var hFuel = r.fuel / peak * 130;
     var bar = svgEl('rect', { x: x, y: 150 - hClaim, width: 34, height: Math.max(hClaim, 0), rx: 4, fill: CHART_COLORS[0] });
