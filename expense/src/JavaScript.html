@@ -3174,7 +3174,7 @@ function renderDash(res) {
   renderDonut($('#dashGroups'), res.byGroup, tot.claim, function(g) {
     return L(g) + (g.account ? ' · ' + g.account : '');
   });
-  $('#dashTrendWrap').hidden = (res.byMonth || []).length < 2;
+  $('#dashTrendWrap').hidden = !(res.byMonth || []).length;
   renderColumns($('#dashTrend'), res.byMonth || []);
   renderRankBars($('#dashTypeBars'), res.byType, function(ty) {
     return L(ty);
