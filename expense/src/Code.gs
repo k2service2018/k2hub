@@ -482,7 +482,7 @@ function getClaim(token, claimId) {
   claim.yearMonth = fmtMonth_(claim.yearMonth);
   var me = me_();
   var perms = claimPermissions_(claim, me);
-  var visible = perms.isOwner || perms.canEdit || perms.canCheck || perms.canApprove || perms.canReject || perms.canPay || me.isFinance || me.isSuperAdmin || normEmail_(claim.checkerEmail) === me.email || normEmail_(claim.approverEmail) === me.email;
+  var visible = perms.isOwner || perms.canEdit || perms.canCheck || perms.canApprove || perms.canReject || perms.canPay || me.isFinance || me.isSuperAdmin || me.isChecker || normEmail_(claim.checkerEmail) === me.email || normEmail_(claim.approverEmail) === me.email || normEmail_(claim.approvedBy) === me.email;
   if (!visible) return {
     ok: false,
     errors: [ 'คุณไม่มีสิทธิ์เข้าถึงใบเบิกนี้' ]
@@ -554,11 +554,10 @@ function listClaims(token, filter) {
     return o;
   }).filter(function(o) {
     if (!o.claimId) return false;
-    if (!identity.isSuperAdmin && !identity.isFinance) {
+    if (!identity.isSuperAdmin && !identity.isFinance && !identity.isChecker) {
       var mine = normEmail_(o.createdBy) === me;
-      var toCheck = normEmail_(o.checkerEmail) === me || !o.checkerEmail && identity.isChecker && o.status === 'Submitted';
-      var toApprove = normEmail_(o.approverEmail) === me;
-      if (!mine && !toCheck && !toApprove) return false;
+      var toApprove = normEmail_(o.approverEmail) === me || normEmail_(o.approvedBy) === me;
+      if (!mine && !toApprove) return false;
     }
     if (filter.mine && me && normEmail_(o.createdBy) !== me) return false;
     if (filter.status && o.status !== filter.status) return false;

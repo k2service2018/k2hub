@@ -1497,8 +1497,9 @@ function applyIdentity() {
   $('[data-view="admin"]').hidden = !ME.isSuperAdmin;
   $('[data-view="form"]').hidden = !ME.canClaim;
   var listTab = $('[data-view="list"]');
-  listTab.hidden = !ME.canClaim && !ME.isSuperAdmin && !ME.isFinance;
-  listTab.textContent = t(ME.isSuperAdmin || ME.isFinance ? 'nav_list_all' : 'nav_list');
+  var seesAll = ME.isSuperAdmin || ME.isFinance || ME.isChecker;
+  listTab.hidden = !ME.canClaim && !seesAll;
+  listTab.textContent = t(seesAll ? 'nav_list_all' : 'nav_list');
   var badge = $('#regStatusBadge');
   badge.hidden = false;
   badge.className = badgeClass(ME.active ? 'active' : 'pending');

@@ -61,6 +61,14 @@ function approverPool_(approver, me) {
   return pool.length ? pool : superAdminEmails_();
 }
 
+function printerPool_(claim, me) {
+  var checked = normEmail_(claim.checkedBy);
+  var pool = checked ? [ checked ] : roleEmails_(ROLES.ADMIN);
+  return pool.filter(function(e) {
+    return e && e !== normEmail_(me && me.email);
+  });
+}
+
 function effectiveApprover_(claim) {
   var assigned = normEmail_(claim.approverEmail);
   if (!assigned) return '';
@@ -435,6 +443,7 @@ function approveClaim(token, claimId, comment) {
     var fresh = loadClaimRow_(claimId).claim;
     var pdf = attachPdfIfEnabled_(claimId);
     notifyOwner_(fresh, 'Approved', me, comment, pdf);
+    notifyPrint_(fresh, printerPool_(fresh, me), me, pdf);
     if (CFG.REQUIRE_PAYMENT_STEP) {
       var financePool = roleEmails_(ROLES.FINANCE).concat(CFG.FINANCE_EMAILS.map(normEmail_));
       notifyStage_(fresh, financePool, 'pay', me, comment);
@@ -655,6 +664,13 @@ function notifyStage_(claim, recipients, stageKey, actor, comment) {
   }[stageKey] || 'มีใบเบิกรอคุณดำเนินการ';
   var pdf = stageKey === 'check' || stageKey === 'approve' ? attachPdfIfEnabled_(claim.claimId) : null;
   sendMail_(recipients, '[' + stage.action + '] ใบเบิก ' + claim.claimId + ' — ' + claim.employee, '<p style="font-size:15px"><b>' + heading + '</b></p>' + claimSummaryHtml_(claim) + '<p style="font-size:13px;color:#5a6577">ส่งโดย ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p><b>หมายเหตุ:</b> ' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, 'เปิดรายการที่รอดำเนินการ') + (pdf ? '<p style="color:#666;font-size:12px">เอกสารฉบับเต็มแนบมาในรูปแบบ PDF</p>' : ''), pdf ? [ pdf ] : []);
+}
+
+function notifyPrint_(claim, recipients, actor, pdfBlob) {
+  if (!recipients || !recipients.length) return;
+  var url = webAppUrl_();
+  var link = url ? url + '?id=' + encodeURIComponent(claim.claimId) : '';
+  sendMail_(recipients, '[พิมพ์เอกสาร] ใบเบิก ' + claim.claimId + ' — ' + claim.employee, '<p style="font-size:15px"><b>ใบเบิกได้รับอนุมัติแล้ว รอพิมพ์เอกสาร</b></p>' + claimSummaryHtml_(claim) + '<p style="font-size:13px;color:#5a6577">อนุมัติโดย ' + escapeHtml_(actor.name || actor.email) + '</p>' + actionButtonHtml_(link, 'เปิดใบเบิกเพื่อพิมพ์') + (pdfBlob ? '<p style="color:#666;font-size:12px">เอกสารฉบับเต็มแนบมาในรูปแบบ PDF</p>' : ''), pdfBlob ? [ pdfBlob ] : []);
 }
 
 function notifyOwner_(claim, toStatus, actor, comment, pdfBlob) {
