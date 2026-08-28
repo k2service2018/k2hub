@@ -1113,11 +1113,14 @@ function routeInitial() {
     return;
   }
   if (INITIAL_PAGE === 'list' || INITIAL_PAGE === 'inbox' || INITIAL_PAGE === 'admin' || INITIAL_PAGE === 'register') {
-    switchView(INITIAL_PAGE);
-    return;
+    if (!(INITIAL_PAGE === 'list' && !ME.canClaim)) {
+      switchView(INITIAL_PAGE);
+      return;
+    }
   }
   newClaim();
   if (ME.isChecker || ME.isApprover || ME.isFinance) switchView('inbox');
+  else if (!ME.canClaim) switchView('register');
 }
 
 function showAuth(which) {
@@ -1489,6 +1492,8 @@ function applyIdentity() {
   $('#regEmail').textContent = ME.email;
   $('[data-view="inbox"]').hidden = !(ME.isChecker || ME.isApprover || ME.isFinance || ME.isSuperAdmin);
   $('[data-view="admin"]').hidden = !ME.isSuperAdmin;
+  $('[data-view="form"]').hidden = !ME.canClaim;
+  $('[data-view="list"]').hidden = !ME.canClaim;
   var badge = $('#regStatusBadge');
   badge.hidden = false;
   badge.className = badgeClass(ME.active ? 'active' : 'pending');
@@ -2406,6 +2411,7 @@ function updateBadge(status, text) {
   var b = $('#claimIdBadge');
   b.textContent = text + (status ? ' · ' + statusLabel(status) : '');
   b.className = badgeClass(status || 'new');
+  b.hidden = !!(ME && !ME.canClaim);
 }
 
 function collectPayload() {

@@ -213,7 +213,8 @@ function identityFor_(session) {
     isSuperAdmin: superAdmin,
     isFinance: superAdmin || role === ROLES.FINANCE || CFG.FINANCE_EMAILS.map(normEmail_).indexOf(normEmail_(session.email)) >= 0,
     isChecker: superAdmin || active && role === ROLES.ADMIN || isAssignedIn_('CheckerEmail', session.email),
-    isApprover: superAdmin || active && role === ROLES.MANAGER || isAssignedIn_('ApproverEmail', session.email)
+    isApprover: superAdmin || active && role === ROLES.MANAGER || isAssignedIn_('ApproverEmail', session.email),
+    canClaim: superAdmin || CFG.ROLES_NO_CLAIM.indexOf(role) < 0
   };
 }
 

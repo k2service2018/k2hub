@@ -97,6 +97,8 @@ function claimPermissions_(claim, me) {
 function submitForApproval(token, claimId, options) {
   var gate = requireActiveAccount_(token);
   if (gate) return gate;
+  var claimGate = requireClaimRight_();
+  if (claimGate) return claimGate;
   var lock = LockService.getScriptLock();
   lock.waitLock(3e4);
   try {

@@ -120,6 +120,14 @@ function getBootstrap(token) {
   });
 }
 
+function requireClaimRight_() {
+  if (me_().canClaim) return null;
+  return {
+    ok: false,
+    errors: [ 'บทบาท ' + me_().role + ' ไม่ได้ทำใบเบิกในระบบนี้' ]
+  };
+}
+
 function requireActiveAccount_(token) {
   var session = getSession_(token);
   if (!session) return {
@@ -270,6 +278,8 @@ function findClaimRow_(sh, claimId) {
 function saveClaim(token, payload) {
   var gate = requireActiveAccount_(token);
   if (gate) return gate;
+  var claimGate = requireClaimRight_();
+  if (claimGate) return claimGate;
   var lock = LockService.getScriptLock();
   lock.waitLock(3e4);
   try {
