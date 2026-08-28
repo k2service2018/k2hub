@@ -47,8 +47,8 @@ function insertLogo_(sh) {
   var id = secret_('LOGO_FILE_ID');
   if (!id) return;
   try {
-    var img = sh.insertImage(DriveApp.getFileById(id).getBlob(), LAST_COL - 2, 3, 6, 2);
-    img.setWidth(104).setHeight(89);
+    var img = sh.insertImage(DriveApp.getFileById(id).getBlob(), LAST_COL - 2, 1, 8, 4);
+    img.setWidth(100).setHeight(85);
   } catch (e) {}
 }
 
@@ -159,6 +159,7 @@ function renderFormSheet_(claimId) {
   sh.setColumnWidth(6, 42);
   for (var cc = 7; cc <= LAST_COL - 1; cc++) sh.setColumnWidth(cc, 58);
   sh.setColumnWidth(LAST_COL, 70);
+  for (var hr = 1; hr <= 6; hr++) sh.setRowHeight(hr, 21);
   sh.setRowHeight(7, 30);
   sh.setRowHeight(8, 34);
   SpreadsheetApp.flush();
