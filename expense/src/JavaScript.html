@@ -2291,8 +2291,13 @@ function renderFlowbar(status) {
   });
 }
 
+function markDirty() {
+  if (!STATE.readonly) STATE.dirty = true;
+}
+
 function newClaim() {
   STATE = {
+    dirty: false,
     claimId: '',
     status: 'Draft',
     rows: [],
@@ -2372,6 +2377,7 @@ function loadClaim(claimId) {
     renderHistory(res.history, '#historyList', '#historyCard');
     applyPermissions(STATE.perms);
     recalcTotals();
+    STATE.dirty = false;
     switchView('form');
   }).catch(failLoad);
 }
@@ -2492,6 +2498,7 @@ function saveDraft() {
     if (!STATE.status || STATE.status === 'Draft') STATE.status = res.status;
     updateBadge(STATE.status, res.claimId);
     $('#btnPdf').disabled = false;
+    STATE.dirty = false;
     toast(res.message + ' (' + res.claimId + ')', 'ok');
   }).catch(function(err) {
     toast(t('err_pre') + (err.message || err), 'err');
@@ -3797,8 +3804,10 @@ function bindActions() {
       if (!$('#view-form').hidden && !STATE.readonly) saveDraft();
     }
   });
+  $('#view-form').addEventListener('input', markDirty);
+  $('#view-form').addEventListener('change', markDirty);
   window.addEventListener('beforeunload', function(e) {
-    if (!$('#view-form').hidden && !STATE.readonly && (filledRows(GRIDS.exp).length || filledRows(GRIDS.fuel).length)) {
+    if (STATE.dirty && !$('#view-form').hidden && !STATE.readonly) {
       e.preventDefault();
       e.returnValue = '';
     }

@@ -55,10 +55,10 @@ function renderFormSheet_(claimId) {
   sh.setHiddenGridlines(true);
   HEADER_FIELDS.forEach(function(f, i) {
     var r = i + 1;
-    sh.getRange(r, 1).setValue(f.en).setFontWeight('bold').setFontSize(9);
-    sh.getRange(r, 2, 1, 3).merge().setValue(claim[f.key] || '').setFontSize(9).setBorder(null, null, true, null, null, null, '#666666', SpreadsheetApp.BorderStyle.SOLID);
+    sh.getRange(r, 1, 1, 2).merge().setValue(f.en).setFontWeight('bold').setFontSize(9).setHorizontalAlignment('left').setVerticalAlignment('middle');
+    sh.getRange(r, 3, 1, 3).merge().setValue(claim[f.key] || '').setFontSize(9).setNumberFormat('@').setHorizontalAlignment('left').setVerticalAlignment('middle').setBorder(null, null, true, null, null, null, '#666666', SpreadsheetApp.BorderStyle.SOLID);
   });
-  sh.getRange(3, 5, 2, LAST_COL - 4).merge().setValue((CFG.COMPANY ? CFG.COMPANY + '\n' : '') + CFG.DOC_TITLE).setFontSize(20).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  sh.getRange(3, 6, 2, LAST_COL - 5).merge().setValue((CFG.COMPANY ? CFG.COMPANY + '\n' : '') + CFG.DOC_TITLE).setFontSize(20).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
   sh.getRange(1, LAST_COL).setValue(CFG.DOC_NO).setFontSize(8).setHorizontalAlignment('right');
   sh.getRange(2, LAST_COL).setValue(claim.claimId).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('right');
   var groupSpans = {};
@@ -142,10 +142,10 @@ function renderFormSheet_(claimId) {
   var statusText = 'สถานะ: ' + statusLabel_(claim.status) + (Number(claim.revision) ? '  •  แก้ไขครั้งที่ ' + claim.revision : '') + (claim.status === 'Rejected' && claim.rejectReason ? '  •  เหตุผลที่ตีกลับ: ' + claim.rejectReason : '');
   sh.getRange(42, 1, 1, LAST_COL).merge().setValue(statusText).setFontSize(8).setFontColor('#5a6577');
   sh.setColumnWidth(1, 28);
-  sh.setColumnWidth(2, 62);
-  sh.setColumnWidth(3, 70);
-  sh.setColumnWidth(4, 170);
-  sh.setColumnWidth(5, 44);
+  sh.setColumnWidth(2, 66);
+  sh.setColumnWidth(3, 132);
+  sh.setColumnWidth(4, 186);
+  sh.setColumnWidth(5, 54);
   sh.setColumnWidth(6, 42);
   for (var cc = 7; cc <= LAST_COL - 1; cc++) sh.setColumnWidth(cc, 58);
   sh.setColumnWidth(LAST_COL, 70);
