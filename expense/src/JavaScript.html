@@ -1188,6 +1188,8 @@ function routeInitial() {
   switchView(landingView());
 }
 
+var NAV_ORDER = [ 'list', 'inbox', 'review', 'form', 'dash', 'admin', 'register' ];
+
 function landingView() {
   if (ME.isSuperAdmin) return 'list';
   if (ME.isChecker || ME.isApprover || ME.isFinance) return 'inbox';
@@ -1574,6 +1576,10 @@ function applyIdentity() {
   $('#fMine').closest('.chk').hidden = !seesAll;
   if (!seesAll) $('#fMine').checked = false;
   var nav = $('#tabs');
+  NAV_ORDER.forEach(function(v) {
+    var tab = nav.querySelector('[data-view="' + v + '"]');
+    if (tab) nav.appendChild(tab);
+  });
   var lead = nav.querySelector('[data-view="' + landingView() + '"]');
   if (lead) nav.insertBefore(lead, nav.firstElementChild);
   var badge = $('#regStatusBadge');
