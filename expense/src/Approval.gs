@@ -643,7 +643,7 @@ function attachPdfIfEnabled_(claimId) {
 }
 
 function claimSummaryHtml_(claim) {
-  var rows = [ [ 'เลขที่ใบเบิก', escapeHtml_(claim.claimId) + (Number(claim.revision) ? ' (แก้ไขครั้งที่ ' + claim.revision + ')' : '') ], [ 'ผู้จัดทำ', escapeHtml_(claim.employee) + ' &lt;' + escapeHtml_(claim.createdBy) + '&gt;' ], [ 'ฝ่าย / แผนก', escapeHtml_(claim.division) ], [ 'ปี / เดือน', escapeHtml_(claim.yearMonth) ], [ 'จำนวนรายการ', escapeHtml_(claim.itemCount) ], [ 'ยอดรวม', '<b>' + Number(claim.grandTotal || 0).toLocaleString('en-US', {
+  var rows = [ [ 'เลขที่ใบเบิก', escapeHtml_(claim.claimId) + (Number(claim.revision) ? ' (แก้ไขครั้งที่ ' + claim.revision + ')' : '') ], [ 'ผู้จัดทำ', escapeHtml_(claim.employee) + ' &lt;' + escapeHtml_(claim.createdBy) + '&gt;' ], [ 'ฝ่าย / แผนก', escapeHtml_(claim.division) ], [ 'ปี / เดือน', escapeHtml_(fmtMonth_(claim.yearMonth)) ], [ 'จำนวนรายการ', escapeHtml_(claim.itemCount) ], [ 'ยอดรวม', '<b>' + Number(claim.grandTotal || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2
   }) + ' ' + CFG.CURRENCY + '</b>' ], [ 'สถานะปัจจุบัน', escapeHtml_(statusLabel_(claim.status)) ] ];
   return '<table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">' + rows.map(function(r) {
@@ -682,5 +682,11 @@ function notifyOwner_(claim, toStatus, actor, comment, pdfBlob) {
     Rejected: 'ใบเบิกของคุณถูกตีกลับ กรุณาแก้ไขแล้วส่งใหม่ในเลขที่เดิม',
     Paid: 'ใบเบิกของคุณได้รับการจ่ายเงินแล้ว'
   }[toStatus] || 'สถานะใบเบิกเปลี่ยนเป็น ' + statusLabel_(toStatus);
-  sendMail_(claim.createdBy, '[' + statusLabel_(toStatus) + '] ใบเบิก ' + claim.claimId, '<p style="font-size:15px"><b>' + escapeHtml_(heading) + '</b></p>' + claimSummaryHtml_(claim) + '<p><b>ดำเนินการโดย:</b> ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p style="background:#fff5f4;border-left:4px solid #b42318;padding:10px">' + '<b>' + (toStatus === 'Rejected' ? 'เหตุผลที่ตีกลับ' : 'หมายเหตุ') + ':</b><br>' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, toStatus === 'Rejected' ? 'เปิดแก้ไขใบเบิก' : 'เปิดใบเบิก'), pdfBlob ? [ pdfBlob ] : []);
+  var subjectWord = {
+    Checked: 'ผ่านการตรวจสอบแล้ว',
+    Approved: 'ได้รับการอนุมัติแล้ว',
+    Rejected: 'ถูกตีกลับให้แก้ไข',
+    Paid: 'จ่ายเงินแล้ว'
+  }[toStatus] || statusLabel_(toStatus);
+  sendMail_(claim.createdBy, '[ใบเบิกของคุณ] ' + subjectWord + ' — ' + claim.claimId, '<p style="font-size:15px"><b>' + escapeHtml_(heading) + '</b></p>' + claimSummaryHtml_(claim) + '<p><b>ดำเนินการโดย:</b> ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p style="background:#fff5f4;border-left:4px solid #b42318;padding:10px">' + '<b>' + (toStatus === 'Rejected' ? 'เหตุผลที่ตีกลับ' : 'หมายเหตุ') + ':</b><br>' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, toStatus === 'Rejected' ? 'เปิดแก้ไขใบเบิก' : 'เปิดใบเบิก'), pdfBlob ? [ pdfBlob ] : []);
 }

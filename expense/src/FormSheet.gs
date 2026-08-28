@@ -32,6 +32,7 @@ function claimForRender_(claimId) {
   [ 'claimDate', 'submittedAt', 'checkedAt', 'approvedAt', 'rejectedAt', 'paidAt' ].forEach(function(k) {
     claim[k] = fmtDate_(claim[k]);
   });
+  claim.yearMonth = fmtMonth_(claim.yearMonth);
   var items = claimItems_(claimId).map(function(o) {
     o.date = fmtDate_(o.date);
     return o;
