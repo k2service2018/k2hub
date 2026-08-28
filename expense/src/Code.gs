@@ -120,6 +120,17 @@ function getBootstrap(token) {
   });
 }
 
+function involvedInClaim_(claim, me) {
+  var email = normEmail_(me.email);
+  if (normEmail_(claim.createdBy) === email) return true;
+  if (normEmail_(claim.checkedBy) === email) return true;
+  if (normEmail_(claim.approvedBy) === email) return true;
+  if (normEmail_(claim.paidBy) === email) return true;
+  if (normEmail_(claim.checkerEmail) === email) return true;
+  if (normEmail_(claim.approverEmail) === email) return true;
+  return queueCheck_(claim, me) || queueApprove_(claim, me) || queuePay_(claim, me);
+}
+
 function requireClaimRight_() {
   if (me_().canClaim) return null;
   return {
@@ -555,9 +566,7 @@ function listClaims(token, filter) {
   }).filter(function(o) {
     if (!o.claimId) return false;
     if (!identity.isSuperAdmin && !identity.isFinance && !identity.isChecker) {
-      var mine = normEmail_(o.createdBy) === me;
-      var toApprove = normEmail_(o.approverEmail) === me || normEmail_(o.approvedBy) === me;
-      if (!mine && !toApprove) return false;
+      if (!involvedInClaim_(o, identity)) return false;
     }
     if (filter.mine && me && normEmail_(o.createdBy) !== me) return false;
     if (filter.status && o.status !== filter.status) return false;

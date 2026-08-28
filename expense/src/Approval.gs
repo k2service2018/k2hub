@@ -120,6 +120,7 @@ function queueApprove_(claim, me) {
 }
 
 function queuePay_(claim, me) {
+  if (!CFG.REQUIRE_PAYMENT_STEP) return false;
   if (claim.status !== 'Approved') return false;
   if (me.financeDuty) return true;
   return me.isSuperAdmin && orphanStage_(ROLES.FINANCE) && !CFG.FINANCE_EMAILS.length;
