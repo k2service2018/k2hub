@@ -43,6 +43,15 @@ function claimForRender_(claimId) {
   };
 }
 
+function insertLogo_(sh) {
+  var id = secret_('LOGO_FILE_ID');
+  if (!id) return;
+  try {
+    var img = sh.insertImage(DriveApp.getFileById(id).getBlob(), LAST_COL - 2, 3, 6, 2);
+    img.setWidth(104).setHeight(89);
+  } catch (e) {}
+}
+
 function renderFormSheet_(claimId) {
   var data = claimForRender_(claimId);
   var book = ss_();
@@ -58,9 +67,10 @@ function renderFormSheet_(claimId) {
     sh.getRange(r, 1, 1, 2).merge().setValue(f.en).setFontWeight('bold').setFontSize(9).setHorizontalAlignment('left').setVerticalAlignment('middle');
     sh.getRange(r, 3, 1, 3).merge().setValue(claim[f.key] || '').setFontSize(9).setNumberFormat('@').setHorizontalAlignment('left').setVerticalAlignment('middle').setBorder(null, null, true, null, null, null, '#666666', SpreadsheetApp.BorderStyle.SOLID);
   });
-  sh.getRange(3, 6, 2, LAST_COL - 5).merge().setValue((CFG.COMPANY ? CFG.COMPANY + '\n' : '') + CFG.DOC_TITLE).setFontSize(20).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  sh.getRange(2, 6, 4, 7).merge().setValue((CFG.COMPANY ? CFG.COMPANY + '\n' : '') + CFG.DOC_TITLE).setFontSize(20).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
   sh.getRange(1, LAST_COL).setValue(CFG.DOC_NO).setFontSize(8).setHorizontalAlignment('right');
   sh.getRange(2, LAST_COL).setValue(claim.claimId).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('right');
+  insertLogo_(sh);
   var groupSpans = {};
   ITEM_FIELDS.forEach(function(f) {
     if (!f.groupKey) return;
@@ -128,16 +138,16 @@ function renderFormSheet_(claimId) {
   });
   var signCols = {
     prepared: 7,
-    received: 11,
-    approved: 16
+    received: 12,
+    approved: 17
   };
   SIGN_BLOCKS.forEach(function(b) {
     var c = signCols[b.key];
     var by = claim[b.byField] || '';
     var at = claim[b.atField] || '';
-    sh.getRange(38, c, 1, 3).merge().setValue(b.en).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('center');
-    sh.getRange(39, c, 1, 3).merge().setValue(by ? signerName_(by) : '……......./……........../…...........').setFontSize(9).setHorizontalAlignment('center');
-    sh.getRange(40, c, 1, 3).merge().setValue(at ? 'วันที่ ' + at : '').setFontSize(8).setFontColor('#5a6577').setHorizontalAlignment('center');
+    sh.getRange(38, c, 1, 4).merge().setValue(b.en).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('center');
+    sh.getRange(39, c, 1, 4).merge().setValue(by ? signerName_(by) : '……......./……........../…...........').setFontSize(9).setHorizontalAlignment('center');
+    sh.getRange(40, c, 1, 4).merge().setValue(at ? 'วันที่ ' + at : '').setFontSize(8).setFontColor('#5a6577').setHorizontalAlignment('center');
   });
   var statusText = 'สถานะ: ' + statusLabel_(claim.status) + (Number(claim.revision) ? '  •  แก้ไขครั้งที่ ' + claim.revision : '') + (claim.status === 'Rejected' && claim.rejectReason ? '  •  เหตุผลที่ตีกลับ: ' + claim.rejectReason : '');
   sh.getRange(42, 1, 1, LAST_COL).merge().setValue(statusText).setFontSize(8).setFontColor('#5a6577');

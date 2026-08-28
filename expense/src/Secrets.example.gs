@@ -3,5 +3,6 @@ var SECRETS = {
   SUPER_ADMIN_EMAIL: '',
   SEED_PASSWORD: '',
   PDF_FOLDER_ID: '',
-  WEBAPP_URL: ''
+  WEBAPP_URL: '',
+  LOGO_FILE_ID: ''
 };
