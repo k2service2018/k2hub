@@ -1500,6 +1500,9 @@ function applyIdentity() {
   var seesAll = ME.isSuperAdmin || ME.isFinance || ME.isChecker;
   listTab.hidden = !ME.canClaim && !seesAll;
   listTab.textContent = t(seesAll ? 'nav_list_all' : 'nav_list');
+  $('#listTitle').textContent = t(seesAll ? 'nav_list_all' : 'ttl_my_claims');
+  $('#fMine').closest('.chk').hidden = !seesAll;
+  if (!seesAll) $('#fMine').checked = false;
   var badge = $('#regStatusBadge');
   badge.hidden = false;
   badge.className = badgeClass(ME.active ? 'active' : 'pending');
