@@ -49,7 +49,6 @@ function renderFormSheet_(claimId) {
   var sh = book.getSheetByName(CFG.FORM_SHEET);
   if (sh) book.deleteSheet(sh);
   sh = book.insertSheet(CFG.FORM_SHEET);
-  sh.hideSheet();
   var claim = data.claim;
   var items = data.items;
   sh.getRange(1, 1, 45, LAST_COL).clearFormat();
