@@ -1131,9 +1131,14 @@ function routeInitial() {
     }
   }
   newClaim();
-  if (ME.isSuperAdmin) switchView('list');
-  else if (ME.isChecker || ME.isApprover || ME.isFinance) switchView('inbox');
-  else if (!ME.canClaim) switchView('register');
+  switchView(landingView());
+}
+
+function landingView() {
+  if (ME.isSuperAdmin) return 'list';
+  if (ME.isChecker || ME.isApprover || ME.isFinance) return 'inbox';
+  if (!ME.canClaim) return 'register';
+  return 'form';
 }
 
 function showAuth(which) {
@@ -1514,6 +1519,9 @@ function applyIdentity() {
   $('#listTitle').textContent = t(listKey === 'nav_list' ? 'ttl_my_claims' : listKey);
   $('#fMine').closest('.chk').hidden = !seesAll;
   if (!seesAll) $('#fMine').checked = false;
+  var nav = $('#tabs');
+  var lead = nav.querySelector('[data-view="' + landingView() + '"]');
+  if (lead) nav.insertBefore(lead, nav.firstElementChild);
   var badge = $('#regStatusBadge');
   badge.hidden = false;
   badge.className = badgeClass(ME.active ? 'active' : 'pending');
