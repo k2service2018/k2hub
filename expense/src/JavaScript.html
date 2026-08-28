@@ -147,6 +147,12 @@ var I18N = {
     reset_for: 'ตั้งรหัสผ่านใหม่สำหรับ',
     nav_form: 'แบบฟอร์ม',
     nav_list: 'ใบเบิกของฉัน',
+    next_check_todo: 'ยังตรวจไม่ครบ — ทำเครื่องหมายให้ครบทุกรายการ แล้วกด',
+    next_check_done: 'ตรวจครบแล้ว — กดปุ่ม',
+    next_check_flagged: 'มีรายการติดปัญหา — แก้ตัวเลขเองแล้วส่งต่อได้ หรือตีกลับให้ผู้ทำแก้ไขด้วยปุ่ม',
+    next_approve_todo: 'ตรวจยอดและผลการตรวจของ Admin แล้วกดปุ่ม',
+    next_pay_todo: 'ใบนี้อนุมัติแล้ว — กดปุ่ม',
+    next_suffix: ' ที่มุมขวาล่าง',
     nav_list_all: 'ใบเบิกทั้งหมด',
     nav_inbox: 'รอฉันดำเนินการ',
     nav_review: 'ตรวจสอบรายการ',
@@ -429,6 +435,12 @@ var I18N = {
     reset_for: 'Set a new password for',
     nav_form: 'Form',
     nav_list: 'My claims',
+    next_check_todo: 'Not finished — mark every line, then press',
+    next_check_done: 'All lines reviewed — press',
+    next_check_flagged: 'Some lines are flagged — fix the amounts yourself and pass it on, or send it back with',
+    next_approve_todo: 'Review the total and the checker findings, then press',
+    next_pay_todo: 'This claim is approved — press',
+    next_suffix: ' at the bottom right',
     nav_list_all: 'All claims',
     nav_inbox: 'Waiting on me',
     nav_review: 'Review',
@@ -2567,6 +2579,37 @@ function renderReview(res) {
   $('#rvComment').setAttribute('placeholder', p.canApprove && !p.canCheck ? t('ph_approver_comment') : t('ph_review_comment'));
   $('#rvComment').disabled = !(p.canCheck || p.canApprove);
   renderDecisionPanel();
+  renderNextStep();
+}
+
+function renderNextStep() {
+  var p = REVIEW.perms || {};
+  var box = $('#rvNextStep');
+  var total = REVIEW.items.length;
+  var reviewed = REVIEW.items.filter(function(it) {
+    return it.reviewFlag;
+  }).length;
+  var flagged = REVIEW.items.filter(function(it) {
+    return it.reviewFlag === 'flag';
+  }).length;
+  var lead = '';
+  var button = '';
+  if (p.canCheck && flagged) {
+    lead = t('next_check_flagged');
+    button = t('act_reject_for_edit');
+  } else if (p.canCheck) {
+    lead = reviewed < total ? t('next_check_todo') : t('next_check_done');
+    button = t('act_pass_to_manager');
+  } else if (p.canApprove) {
+    lead = t('next_approve_todo');
+    button = t('act_approve');
+  } else if (p.canPay) {
+    lead = t('next_pay_todo');
+    button = t('act_mark_paid');
+  }
+  box.hidden = !lead;
+  if (!lead) return;
+  $('#rvNextStepText').innerHTML = escapeText(lead) + ' <strong>' + escapeText(button) + '</strong>' + escapeText(t('next_suffix'));
 }
 
 function renderDecisionPanel() {
@@ -2814,6 +2857,7 @@ function renderReviewProgress() {
   $('#rvBar').style.width = pct + '%';
   $('#rvBar').style.background = flagged ? '#b45309' : '#10794a';
   $('#rvProgress').textContent = t('reviewed_pre') + reviewed + ' / ' + total + t('suffix_items') + (flagged ? t('sep_flagged') + flagged : '');
+  renderNextStep();
 }
 
 function collectReviews() {
