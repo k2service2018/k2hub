@@ -328,6 +328,9 @@ var I18N = {
     signup_instant: 'สมัครแล้วเริ่มใช้งานได้ทันที',
     ph_review_summary: 'สรุปผลการตรวจสอบ (ไม่บังคับ)',
     msg_pdf_done_pre: 'สร้าง PDF แล้ว: ',
+    pdf_ready_title: 'PDF พร้อมแล้ว',
+    pdf_ready_text: 'เบราว์เซอร์บล็อกการเปิดหน้าต่างใหม่ กดปุ่มด้านล่างเพื่อเปิดไฟล์',
+    pdf_open: 'เปิดไฟล์ PDF',
     first_submit: 'ส่งครั้งแรก',
     act_send_check: 'ส่งตรวจสอบ',
     title_forward_manager: 'ส่งต่อให้ Manager อนุมัติ',
@@ -616,6 +619,9 @@ var I18N = {
     signup_instant: 'You can start using it right after signing up.',
     ph_review_summary: 'Review summary (optional)',
     msg_pdf_done_pre: 'PDF created: ',
+    pdf_ready_title: 'PDF ready',
+    pdf_ready_text: 'Your browser blocked the new window. Use the button below to open the file.',
+    pdf_open: 'Open the PDF',
     first_submit: 'First submission',
     act_send_check: 'Send for checking',
     title_forward_manager: 'Forward to the Manager for approval',
@@ -3478,7 +3484,31 @@ function exportPdfFor(claimId) {
       return;
     }
     toast(t('msg_pdf_done_pre') + res.name, 'ok');
-    window.open(res.url, '_blank');
+    var win = null;
+    try {
+      win = window.open(res.url, '_blank');
+    } catch (e) {}
+    if (!win) offerPdfLink(res.url);
+  });
+}
+
+function offerPdfLink(url) {
+  if (!swalReady()) {
+    prompt(t('pdf_ready_text'), url);
+    return;
+  }
+  var b = swalBase();
+  Swal.fire({
+    icon: 'success',
+    title: t('pdf_ready_title'),
+    text: t('pdf_ready_text'),
+    background: b.bg,
+    color: b.fg,
+    heightAuto: false,
+    confirmButtonText: t('pdf_open'),
+    confirmButtonColor: b.brand
+  }).then(function(r) {
+    if (r.isConfirmed) window.open(url, '_blank');
   });
 }
 </script>
