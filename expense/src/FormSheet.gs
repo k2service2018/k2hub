@@ -153,8 +153,8 @@ function renderFormSheet_(claimId) {
   sh.getRange(42, 1, 1, LAST_COL).merge().setValue(statusText).setFontSize(8).setFontColor('#5a6577');
   sh.setColumnWidth(1, 28);
   sh.setColumnWidth(2, 66);
-  sh.setColumnWidth(3, 132);
-  sh.setColumnWidth(4, 186);
+  sh.setColumnWidth(3, 156);
+  sh.setColumnWidth(4, 202);
   sh.setColumnWidth(5, 54);
   sh.setColumnWidth(6, 42);
   for (var cc = 7; cc <= LAST_COL - 1; cc++) sh.setColumnWidth(cc, 58);
@@ -183,7 +183,7 @@ function exportPdfInternal_(claimId) {
   try {
     sh = renderFormSheet_(claimId);
     var book = ss_();
-    var url = 'https://docs.google.com/spreadsheets/d/' + book.getId() + '/export?' + [ 'format=pdf', 'gid=' + sh.getSheetId(), 'portrait=false', 'size=A4', 'fitw=true', 'scale=4', 'gridlines=false', 'printtitle=false', 'sheetnames=false', 'pagenumbers=false', 'top_margin=0.35', 'bottom_margin=0.35', 'left_margin=0.25', 'right_margin=0.25' ].join('&');
+    var url = 'https://docs.google.com/spreadsheets/d/' + book.getId() + '/export?' + [ 'format=pdf', 'gid=' + sh.getSheetId(), 'portrait=false', 'size=A4', 'fitw=true', 'scale=4', 'gridlines=false', 'printtitle=false', 'sheetnames=false', 'pagenumbers=false', 'top_margin=0.35', 'bottom_margin=0.35', 'left_margin=0.18', 'right_margin=0.18' ].join('&');
     var res = UrlFetchApp.fetch(url, {
       headers: {
         Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
