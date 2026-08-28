@@ -238,7 +238,8 @@ function notifyAdminsOfRegistration_(user) {
 }
 
 function notifyAccountActivated_(user) {
-  sendMail_(user.Email, '[' + CFG.APP_TITLE + '] เปิดใช้งานบัญชีแล้ว', '<p>สวัสดีคุณ ' + escapeHtml_(user.FullName) + '</p>' + '<p>บัญชีของคุณถูกเปิดใช้งานแล้ว เข้าสู่ระบบเพื่อเริ่มกรอกใบเบิกได้ทันที</p>' + actionButtonHtml_(webAppUrl_(), 'เข้าสู่ระบบ'));
+  var lang = mailLangForRole_(user.Role);
+  sendMail_(user.Email, '[' + CFG.APP_TITLE + '] ' + mailText_('act_subject', lang), '<p>' + mailText_('act_greet', lang) + escapeHtml_(user.FullName) + '</p>' + '<p>' + mailText_('act_body', lang) + '</p>' + actionButtonHtml_(webAppUrl_(), mailText_('btn_login', lang)));
 }
 
 function actionButtonHtml_(link, text) {

@@ -602,7 +602,8 @@ function getApprovalHistory(claimId) {
   });
 }
 
-function statusLabel_(status) {
+function statusLabel_(status, lang) {
+  if (lang === 'en') return STATUS_LABELS_EN[status] || status || '';
   return STATUS_LABELS[status] || status || '';
 }
 
@@ -643,10 +644,10 @@ function attachPdfIfEnabled_(claimId) {
   }
 }
 
-function claimSummaryHtml_(claim) {
-  var rows = [ [ 'เลขที่ใบเบิก', escapeHtml_(claim.claimId) + (Number(claim.revision) ? ' (แก้ไขครั้งที่ ' + claim.revision + ')' : '') ], [ 'ผู้จัดทำ', escapeHtml_(claim.employee) + ' &lt;' + escapeHtml_(claim.createdBy) + '&gt;' ], [ 'ฝ่าย / แผนก', escapeHtml_(claim.division) ], [ 'ปี / เดือน', escapeHtml_(fmtMonth_(claim.yearMonth)) ], [ 'จำนวนรายการ', escapeHtml_(claim.itemCount) ], [ 'ยอดรวม', '<b>' + Number(claim.grandTotal || 0).toLocaleString('en-US', {
+function claimSummaryHtml_(claim, lang) {
+  var rows = [ [ mailText_('sum_claimno', lang), escapeHtml_(claim.claimId) + (Number(claim.revision) ? ' (' + mailText_('sum_revision', lang) + claim.revision + ')' : '') ], [ mailText_('sum_employee', lang), escapeHtml_(claim.employee) + ' &lt;' + escapeHtml_(claim.createdBy) + '&gt;' ], [ mailText_('sum_division', lang), escapeHtml_(claim.division) ], [ mailText_('sum_month', lang), escapeHtml_(fmtMonth_(claim.yearMonth)) ], [ mailText_('sum_items', lang), escapeHtml_(claim.itemCount) ], [ mailText_('sum_total', lang), '<b>' + Number(claim.grandTotal || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2
-  }) + ' ' + CFG.CURRENCY + '</b>' ], [ 'สถานะปัจจุบัน', escapeHtml_(statusLabel_(claim.status)) ] ];
+  }) + ' ' + CFG.CURRENCY + '</b>' ], [ mailText_('sum_status', lang), escapeHtml_(statusLabel_(claim.status, lang)) ] ];
   return '<table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">' + rows.map(function(r) {
     return '<tr><td style="color:#5a6577">' + r[0] + '</td><td>' + r[1] + '</td></tr>';
   }).join('') + '</table>';
@@ -658,36 +659,42 @@ function notifyStage_(claim, recipients, stageKey, actor, comment) {
   if (!stage) return;
   var url = webAppUrl_();
   var link = url ? url + '?page=inbox&id=' + encodeURIComponent(claim.claimId) : '';
-  var heading = {
-    check: 'มีใบเบิกรอคุณตรวจสอบ',
-    approve: 'มีใบเบิกผ่านการตรวจสอบแล้ว รอคุณอนุมัติ',
-    pay: 'มีใบเบิกได้รับอนุมัติแล้ว รอบันทึกการจ่ายเงิน'
-  }[stageKey] || 'มีใบเบิกรอคุณดำเนินการ';
+  var headKey = {
+    check: 'head_check',
+    approve: 'head_approve',
+    pay: 'head_pay'
+  }[stageKey] || 'head_action';
   var pdf = stageKey === 'check' || stageKey === 'approve' ? attachPdfIfEnabled_(claim.claimId) : null;
-  sendMail_(recipients, '[' + stage.action + '] ใบเบิก ' + claim.claimId + ' — ' + claim.employee, '<p style="font-size:15px"><b>' + heading + '</b></p>' + claimSummaryHtml_(claim) + '<p style="font-size:13px;color:#5a6577">ส่งโดย ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p><b>หมายเหตุ:</b> ' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, 'เปิดรายการที่รอดำเนินการ') + (pdf ? '<p style="color:#666;font-size:12px">เอกสารฉบับเต็มแนบมาในรูปแบบ PDF</p>' : ''), pdf ? [ pdf ] : []);
+  sendMailLocalized_(recipients, function(lang) {
+    return {
+      subject: '[' + (lang === 'en' ? stage.actionEn : stage.action) + '] ' + mailText_('subj_claim', lang) + ' ' + claim.claimId + ' — ' + claim.employee,
+      html: '<p style="font-size:15px"><b>' + mailText_(headKey, lang) + '</b></p>' + claimSummaryHtml_(claim, lang) + '<p style="font-size:13px;color:#5a6577">' + mailText_('lbl_sent_by', lang) + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p><b>' + mailText_('lbl_note', lang) + ':</b> ' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, mailText_('btn_inbox', lang)) + (pdf ? '<p style="color:#666;font-size:12px">' + mailText_('pdf_attached', lang) + '</p>' : '')
+    };
+  }, pdf ? [ pdf ] : []);
 }
 
 function notifyPrint_(claim, recipients, actor, pdfBlob) {
   if (!recipients || !recipients.length) return;
   var url = webAppUrl_();
   var link = url ? url + '?id=' + encodeURIComponent(claim.claimId) : '';
-  sendMail_(recipients, '[พิมพ์เอกสาร] ใบเบิก ' + claim.claimId + ' — ' + claim.employee, '<p style="font-size:15px"><b>ใบเบิกได้รับอนุมัติแล้ว รอพิมพ์เอกสาร</b></p>' + claimSummaryHtml_(claim) + '<p style="font-size:13px;color:#5a6577">อนุมัติโดย ' + escapeHtml_(actor.name || actor.email) + '</p>' + actionButtonHtml_(link, 'เปิดใบเบิกเพื่อพิมพ์') + (pdfBlob ? '<p style="color:#666;font-size:12px">เอกสารฉบับเต็มแนบมาในรูปแบบ PDF</p>' : ''), pdfBlob ? [ pdfBlob ] : []);
+  sendMailLocalized_(recipients, function(lang) {
+    return {
+      subject: '[' + mailText_('subj_print', lang) + '] ' + mailText_('subj_claim', lang) + ' ' + claim.claimId + ' — ' + claim.employee,
+      html: '<p style="font-size:15px"><b>' + mailText_('head_print', lang) + '</b></p>' + claimSummaryHtml_(claim, lang) + '<p style="font-size:13px;color:#5a6577">' + mailText_('lbl_approved_by', lang) + escapeHtml_(actor.name || actor.email) + '</p>' + actionButtonHtml_(link, mailText_('btn_print', lang)) + (pdfBlob ? '<p style="color:#666;font-size:12px">' + mailText_('pdf_attached', lang) + '</p>' : '')
+    };
+  }, pdfBlob ? [ pdfBlob ] : []);
 }
 
 function notifyOwner_(claim, toStatus, actor, comment, pdfBlob) {
   var url = webAppUrl_();
   var link = url ? url + '?id=' + encodeURIComponent(claim.claimId) : '';
-  var heading = {
-    Checked: 'ใบเบิกของคุณผ่านการตรวจสอบแล้ว — ส่งต่อให้ Manager อนุมัติ',
-    Approved: 'ใบเบิกของคุณได้รับการอนุมัติแล้ว',
-    Rejected: 'ใบเบิกของคุณถูกตีกลับ กรุณาแก้ไขแล้วส่งใหม่ในเลขที่เดิม',
-    Paid: 'ใบเบิกของคุณได้รับการจ่ายเงินแล้ว'
-  }[toStatus] || 'สถานะใบเบิกเปลี่ยนเป็น ' + statusLabel_(toStatus);
-  var subjectWord = {
-    Checked: 'ผ่านการตรวจสอบแล้ว',
-    Approved: 'ได้รับการอนุมัติแล้ว',
-    Rejected: 'ถูกตีกลับให้แก้ไข',
-    Paid: 'จ่ายเงินแล้ว'
-  }[toStatus] || statusLabel_(toStatus);
-  sendMail_(claim.createdBy, '[ใบเบิกของคุณ] ' + subjectWord + ' — ' + claim.claimId, '<p style="font-size:15px"><b>' + escapeHtml_(heading) + '</b></p>' + claimSummaryHtml_(claim) + '<p><b>ดำเนินการโดย:</b> ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p style="background:#fff5f4;border-left:4px solid #b42318;padding:10px">' + '<b>' + (toStatus === 'Rejected' ? 'เหตุผลที่ตีกลับ' : 'หมายเหตุ') + ':</b><br>' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, toStatus === 'Rejected' ? 'เปิดแก้ไขใบเบิก' : 'เปิดใบเบิก'), pdfBlob ? [ pdfBlob ] : []);
+  var known = [ 'Checked', 'Approved', 'Rejected', 'Paid' ].indexOf(toStatus) >= 0;
+  sendMailLocalized_(claim.createdBy, function(lang) {
+    var heading = known ? mailText_('own_head_' + toStatus, lang) : mailText_('own_head_other', lang) + statusLabel_(toStatus, lang);
+    var subjectWord = known ? mailText_('own_subj_' + toStatus, lang) : statusLabel_(toStatus, lang);
+    return {
+      subject: '[' + mailText_('subj_yours', lang) + '] ' + subjectWord + ' — ' + claim.claimId,
+      html: '<p style="font-size:15px"><b>' + escapeHtml_(heading) + '</b></p>' + claimSummaryHtml_(claim, lang) + '<p><b>' + mailText_('lbl_action_by', lang) + '</b> ' + escapeHtml_(actor.name || actor.email) + '</p>' + (comment ? '<p style="background:#fff5f4;border-left:4px solid #b42318;padding:10px">' + '<b>' + mailText_(toStatus === 'Rejected' ? 'lbl_reject_reason' : 'lbl_note', lang) + ':</b><br>' + escapeHtml_(comment) + '</p>' : '') + actionButtonHtml_(link, mailText_(toStatus === 'Rejected' ? 'btn_revise' : 'btn_open', lang))
+    };
+  }, pdfBlob ? [ pdfBlob ] : []);
 }

@@ -437,7 +437,8 @@ function requestPasswordReset(email) {
       exp: Date.now() + CFG.SESSION.RESET_TTL_SEC * 1e3
     }));
     var url = webAppUrl_() + '?reset=' + token;
-    sendMail_(user.Email, 'ตั้งรหัสผ่านใหม่ — ' + CFG.APP_TITLE, '<p>สวัสดีครับ</p>' + '<p>มีการขอตั้งรหัสผ่านใหม่สำหรับระบบ <b>' + escapeHtml_(CFG.APP_TITLE) + '</b></p>' + '<p>คลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์หมดอายุใน 30 นาที)</p>' + actionButtonHtml_(url, 'ตั้งรหัสผ่านใหม่') + '<p style="color:#666;font-size:12px">หากคุณไม่ได้เป็นผู้ร้องขอ กรุณาเพิกเฉยต่ออีเมลฉบับนี้</p>');
+    var lang = mailLangForRole_(user.Role);
+    sendMail_(user.Email, mailText_('rst_subject', lang) + CFG.APP_TITLE, '<p>' + mailText_('rst_greet', lang) + '</p>' + '<p>' + mailText_('rst_line1', lang) + '<b>' + escapeHtml_(CFG.APP_TITLE) + '</b></p>' + '<p>' + mailText_('rst_line2', lang) + '</p>' + actionButtonHtml_(url, mailText_('btn_reset', lang)) + '<p style="color:#666;font-size:12px">' + mailText_('rst_ignore', lang) + '</p>');
   }
   return {
     ok: true,
