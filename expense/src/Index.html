@@ -137,6 +137,7 @@
       <button class="tab" data-view="inbox" hidden><span data-i18n="nav_inbox"></span><span class="pill" id="inboxCount" hidden>0</span></button>
       <button class="tab" data-view="review" hidden data-i18n="nav_review"></button>
       <button class="tab" data-view="admin" hidden><span data-i18n="nav_admin"></span><span class="pill" id="pendingCount" hidden>0</span></button>
+      <button class="tab" data-view="dash" data-i18n="nav_dashboard"></button>
       <button class="tab" data-view="register" data-i18n="nav_profile"></button>
     </nav>
     <div class="who">
@@ -259,7 +260,7 @@
       <h2 class="card__title" data-i18n="ttl_by_account"></h2>
       <div class="summary" id="summary"></div>
       <div class="grand">
-        <span data-i18n="lbl_grand_total"></span>
+        <span data-i18n="lbl_claim_total"></span>
         <strong id="grandTotal">0.00</strong>
         <span class="cur" id="curLabel">THB</span>
       </div>
@@ -268,6 +269,11 @@
         <b id="fuelLiterOut">0.00</b> <span data-i18n="unit_liter"></span> ·
         <b id="fuelTotalOut">0.00</b> <span data-i18n="unit_baht"></span>
       </p>
+      <div class="grand grand--all" id="spendRow" hidden>
+        <span data-i18n="lbl_grand_total_all"></span>
+        <strong id="spendTotal">0.00</strong>
+        <span class="cur" id="curLabelAll">THB</span>
+      </div>
     </section>
 
     <section class="card">
@@ -298,6 +304,62 @@
       <button type="button" class="btn btn--primary" id="btnApprove" hidden data-i18n="act_approve"></button>
       <button type="button" class="btn btn--primary" id="btnPay" hidden data-i18n="act_mark_paid"></button>
     </div>
+  </main>
+
+  <main id="view-dash" class="view" hidden>
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title" id="dashTitle" data-i18n="ttl_dashboard"></h2>
+        <div class="card__actions">
+          <select id="dPerson" hidden></select>
+          <select id="dMonth"></select>
+          <select id="dStatus"></select>
+          <button type="button" class="btn btn--ghost btn--sm" id="btnDashRefresh" data-i18n="act_refresh"></button>
+        </div>
+      </div>
+
+      <div class="summary" id="dashCards"></div>
+
+      <p class="hint" id="dashEmpty" hidden data-i18n="hint_dash_empty"></p>
+
+      <div id="dashBody" hidden>
+        <h3 class="dash__h" data-i18n="ttl_by_group"></h3>
+        <div id="dashGroups"></div>
+
+        <h3 class="dash__h" data-i18n="ttl_by_type"></h3>
+        <div class="table-wrap">
+          <table class="list" id="dashTypes">
+            <thead>
+              <tr>
+                <th data-i18n="col_expense_type"></th>
+                <th data-i18n="col_account_group"></th>
+                <th class="num" data-i18n="col_amount"></th>
+                <th class="num" data-i18n="col_share"></th>
+              </tr>
+            </thead>
+            <tbody id="dashTypeBody"></tbody>
+          </table>
+        </div>
+
+        <div id="dashPeopleWrap" hidden>
+          <h3 class="dash__h" data-i18n="ttl_by_person"></h3>
+          <div class="table-wrap">
+            <table class="list" id="dashPeople">
+              <thead>
+                <tr>
+                  <th data-i18n="col_employee"></th>
+                  <th class="num" data-i18n="col_claim_count"></th>
+                  <th class="num" data-i18n="col_claimable"></th>
+                  <th class="num" data-i18n="col_fuel_card"></th>
+                  <th class="num" data-i18n="col_total_spend"></th>
+                </tr>
+              </thead>
+              <tbody id="dashPeopleBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <main id="view-list" class="view" hidden>

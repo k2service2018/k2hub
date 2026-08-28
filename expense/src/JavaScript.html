@@ -155,6 +155,28 @@ var I18N = {
     next_pay_todo: 'ใบนี้อนุมัติแล้ว — กดปุ่ม',
     next_suffix: ' ที่มุมขวาล่าง',
     nav_list_all: 'ใบเบิกทั้งหมด',
+    nav_dashboard: 'สรุปค่าใช้จ่าย',
+    ttl_dashboard: 'สรุปค่าใช้จ่าย',
+    ttl_dashboard_mine: 'สรุปค่าใช้จ่ายของฉัน',
+    ttl_by_group: 'แยกตามหมวดบัญชี',
+    ttl_by_type: 'แยกตามประเภทค่าใช้จ่าย',
+    ttl_by_person: 'แยกตามผู้เบิก',
+    col_expense_type: 'ประเภทค่าใช้จ่าย',
+    col_account_group: 'หมวดบัญชี',
+    col_share: 'สัดส่วน',
+    col_employee: 'ผู้เบิก',
+    col_claim_count: 'จำนวนใบเบิก',
+    col_claimable: 'ยอดเบิกได้',
+    col_fuel_card: 'Fleet Card',
+    col_total_spend: 'ใช้จ่ายจริง',
+    opt_all_people: 'ผู้เบิกทุกคน',
+    opt_all_months: 'ทุกเดือน',
+    card_claimable: 'ยอดเบิกได้',
+    card_fuelcard: 'ค่าน้ำมัน Fleet Card',
+    card_spend: 'ใช้จ่ายจริงทั้งหมด',
+    card_claims: 'ใบเบิก',
+    hint_dash_empty: 'ยังไม่มีใบเบิกที่ส่งเข้าระบบตามเงื่อนไขที่เลือก',
+    busy_dash: 'กำลังรวมยอด…',
     nav_list_approved: 'ประวัติการอนุมัติ',
     nav_inbox: 'รอฉันดำเนินการ',
     nav_review: 'ตรวจสอบรายการ',
@@ -182,6 +204,8 @@ var I18N = {
     hint_toggle_flag: 'คลิกที่ปุ่มผลตรวจเพื่อสลับ ผ่าน / ติดปัญหา',
     grid_hint: 'หนึ่งบรรทัดคือหนึ่งใบเสร็จ — เลือกประเภทค่าใช้จ่าย แล้วใส่จำนวนเงินช่องเดียว ระบบจะลงคอลัมน์ให้ตรงกับแบบฟอร์ม Excel เอง กด Enter เพื่อไปบรรทัดถัดไป',
     lbl_grand_total: 'ยอดรวมทั้งสิ้น',
+    lbl_claim_total: 'ยอดที่ขอเบิก',
+    lbl_grand_total_all: 'ยอดรวมทั้งสิ้น (รวม Fleet Card)',
     lbl_only_mine: 'เฉพาะที่ฉันจัดทำ',
     lbl_claimed_total: 'ยอดรวมที่ขอเบิก',
     lbl_edit_numbers: 'แก้ไขตัวเลขได้',
@@ -448,6 +472,28 @@ var I18N = {
     next_pay_todo: 'This claim is approved — press',
     next_suffix: ' at the bottom right',
     nav_list_all: 'All claims',
+    nav_dashboard: 'Spending',
+    ttl_dashboard: 'Spending summary',
+    ttl_dashboard_mine: 'My spending',
+    ttl_by_group: 'By account group',
+    ttl_by_type: 'By expense type',
+    ttl_by_person: 'By person',
+    col_expense_type: 'Expense type',
+    col_account_group: 'Account group',
+    col_share: 'Share',
+    col_employee: 'Employee',
+    col_claim_count: 'Claims',
+    col_claimable: 'Claimable',
+    col_fuel_card: 'Fleet card',
+    col_total_spend: 'Actually spent',
+    opt_all_people: 'Everyone',
+    opt_all_months: 'All months',
+    card_claimable: 'Claimable total',
+    card_fuelcard: 'Fleet card fuel',
+    card_spend: 'Total actually spent',
+    card_claims: 'Claims',
+    hint_dash_empty: 'No submitted claims match the filters you picked',
+    busy_dash: 'Adding it up…',
     nav_list_approved: 'Approval history',
     nav_inbox: 'Waiting on me',
     nav_review: 'Review',
@@ -475,6 +521,8 @@ var I18N = {
     hint_toggle_flag: 'Click the result button to toggle Passed / Flagged.',
     grid_hint: 'One row is one receipt — pick an expense type and enter a single amount; the system files it into the right Excel column for you. Press Enter for the next row.',
     lbl_grand_total: 'Grand total',
+    lbl_claim_total: 'Amount claimed',
+    lbl_grand_total_all: 'Grand total (incl. fleet card)',
     lbl_only_mine: 'Only mine',
     lbl_claimed_total: 'Claimed total',
     lbl_edit_numbers: 'Allow editing amounts',
@@ -2114,6 +2162,9 @@ function recalcTotals() {
   var fuelLiterCard = document.getElementById('sum_fuel_liter');
   if (fuelLiterCard) fuelLiterCard.textContent = money(fuelLiter) + ' ' + t('unit_liter');
   $('#fuelMemo').hidden = fuelAmount === 0 && fuelLiter === 0;
+  $('#spendRow').hidden = fuelAmount === 0;
+  $('#spendTotal').textContent = money(grand + fuelAmount);
+  $('#curLabelAll').textContent = BOOT.cfg.currency;
 
   BOOT.groups.forEach(function(g) {
     var keys = claimableTypes().filter(function(f) {
@@ -2932,6 +2983,133 @@ function saveReviewEdits() {
   } ], t('busy_save_edits'));
 }
 
+var DASH = { loaded: false };
+
+function dashFilter() {
+  return {
+    person: $('#dPerson').hidden ? '' : $('#dPerson').value,
+    yearMonth: $('#dMonth').value,
+    status: $('#dStatus').value
+  };
+}
+
+function fillDashSelect(sel, options, keepValue, allLabel) {
+  var prev = keepValue ? sel.value : '';
+  sel.innerHTML = '';
+  sel.appendChild(el('option', { value: '', text: allLabel }));
+  options.forEach(function(o) {
+    sel.appendChild(el('option', { value: o.value, text: o.text }));
+  });
+  if (prev) sel.value = prev;
+}
+
+function refreshDash() {
+  return call('getDashboard', [ dashFilter() ], t('busy_dash')).then(function(res) {
+    if (!res.ok) {
+      showErrors(res.errors, '#errors', t('err_load_failed'));
+      return;
+    }
+    renderDash(res);
+  }).catch(failLoad);
+}
+
+function renderDash(res) {
+  $('#dashTitle').textContent = t(res.seesAll ? 'ttl_dashboard' : 'ttl_dashboard_mine');
+
+  var person = $('#dPerson');
+  person.hidden = !res.seesAll;
+  if (res.seesAll) {
+    fillDashSelect(person, res.people.map(function(p) {
+      return { value: p.email, text: p.name + ' · ' + p.email };
+    }), DASH.loaded, t('opt_all_people'));
+  }
+  fillDashSelect($('#dMonth'), res.months.map(function(m) {
+    return { value: m, text: m };
+  }), DASH.loaded, t('opt_all_months'));
+  if (!DASH.loaded) {
+    var st = $('#dStatus');
+    st.innerHTML = '';
+    st.appendChild(el('option', { value: '', text: t('opt_all_status') }));
+    [ 'Submitted', 'Checked', 'Approved', 'Paid' ].forEach(function(s) {
+      st.appendChild(el('option', { value: s, text: BOOT.statusLabels[s] || s }));
+    });
+  }
+  DASH.loaded = true;
+
+  var tot = res.totals;
+  var cards = $('#dashCards');
+  cards.innerHTML = '';
+  [ { label: t('card_claimable'), value: money(tot.claim), cur: BOOT.cfg.currency, cls: '' },
+    { label: t('card_fuelcard'), value: money(tot.fuel), cur: BOOT.cfg.currency, cls: 'sum-card--fuel', sub: money(tot.liter) + ' ' + t('unit_liter') },
+    { label: t('card_spend'), value: money(tot.spend), cur: BOOT.cfg.currency, cls: 'sum-card--spend' },
+    { label: t('card_claims'), value: String(tot.claims), cur: '', cls: '', sub: tot.items + t('suffix_items') }
+  ].forEach(function(c) {
+    cards.appendChild(el('div', { class: 'sum-card ' + c.cls }, [
+      el('h4', { text: c.label }),
+      el('div', { class: 'acct', text: c.sub || (c.cur || '—') }),
+      el('div', { class: 'val', text: c.value })
+    ]));
+  });
+
+  var none = tot.claims === 0;
+  $('#dashEmpty').hidden = !none;
+  $('#dashBody').hidden = none;
+  if (none) return;
+
+  var base = tot.claim || 1;
+  var groups = $('#dashGroups');
+  groups.innerHTML = '';
+  res.byGroup.forEach(function(g) {
+    var pct = Math.round(g.amount / base * 1000) / 10;
+    var row = el('div', { class: 'bar' });
+    var head = el('div', { class: 'bar__head' });
+    head.appendChild(el('span', { class: 'bar__name', text: L(g) + (g.account ? ' · ' + g.account : '') }));
+    head.appendChild(el('span', { class: 'bar__val', text: money(g.amount) + ' · ' + pct + '%' }));
+    row.appendChild(head);
+    var track = el('div', { class: 'bar__track' });
+    var fill = el('span');
+    fill.style.width = Math.max(pct, 1) + '%';
+    fill.style.background = g.color;
+    track.appendChild(fill);
+    row.appendChild(track);
+    groups.appendChild(row);
+  });
+
+  var tbody = $('#dashTypeBody');
+  tbody.innerHTML = '';
+  res.byType.forEach(function(ty) {
+    var g = findGroup(ty.groupKey) || {};
+    var pct = Math.round(ty.amount / base * 1000) / 10;
+    tbody.appendChild(el('tr', {}, [
+      el('td', { text: L(ty) }),
+      el('td', { class: 'muted', text: L(g) + (g.account ? ' · ' + g.account : '') }),
+      el('td', { class: 'num', text: money(ty.amount) }),
+      el('td', { class: 'num muted', text: pct + '%' })
+    ]));
+  });
+
+  var wrap = $('#dashPeopleWrap');
+  wrap.hidden = !res.seesAll || res.byPerson.length < 2;
+  if (!wrap.hidden) {
+    var pbody = $('#dashPeopleBody');
+    pbody.innerHTML = '';
+    res.byPerson.forEach(function(p) {
+      var link = el('span', { class: 'rowlink', text: p.name });
+      link.addEventListener('click', function() {
+        $('#dPerson').value = p.email;
+        refreshDash();
+      });
+      pbody.appendChild(el('tr', {}, [
+        el('td', {}, [ link ]),
+        el('td', { class: 'num', text: String(p.claims) }),
+        el('td', { class: 'num', text: money(p.claim) }),
+        el('td', { class: 'num', text: money(p.fuel) }),
+        el('td', { class: 'num', text: money(p.spend) })
+      ]));
+    });
+  }
+}
+
 function refreshInbox() {
   return call('listPendingApprovals', [], t('busy_load_inbox')).then(function(res) {
     var body = $('#inboxBody');
@@ -3042,13 +3220,14 @@ function switchView(view) {
       n.classList.toggle('is-active', n.dataset.view === view);
     });
   }
-  [ 'form', 'list', 'inbox', 'review', 'admin', 'register' ].forEach(function(v) {
+  [ 'form', 'list', 'inbox', 'review', 'admin', 'dash', 'register' ].forEach(function(v) {
     var node = document.getElementById('view-' + v);
     if (node) node.hidden = v !== view;
   });
   if (view === 'list') refreshList();
   if (view === 'inbox') refreshInbox();
   if (view === 'admin') refreshAdmin();
+  if (view === 'dash') refreshDash();
   if (view === 'review' && !REVIEW.claimId) {
     $('#reviewEmpty').hidden = false;
     $('#reviewPane').hidden = true;
@@ -3472,6 +3651,10 @@ function bindActions() {
   });
   $('#btnRefresh').addEventListener('click', refreshList);
   $('#fMine').addEventListener('change', refreshList);
+  $('#btnDashRefresh').addEventListener('click', refreshDash);
+  [ '#dPerson', '#dMonth', '#dStatus' ].forEach(function(sel) {
+    $(sel).addEventListener('change', refreshDash);
+  });
   $('#fStatus').addEventListener('change', refreshList);
   $('#fQuery').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') refreshList();
