@@ -356,6 +356,7 @@ var I18N = {
     signup_instant: 'สมัครแล้วเริ่มใช้งานได้ทันที',
     ph_review_summary: 'สรุปผลการตรวจสอบ (ไม่บังคับ)',
     msg_pdf_done_pre: 'สร้าง PDF แล้ว: ',
+    msg_pdf_saved_pre: 'ดาวน์โหลดแล้ว: ',
     pdf_ready_title: 'PDF พร้อมแล้ว',
     pdf_ready_text: 'เบราว์เซอร์บล็อกการเปิดหน้าต่างใหม่ กดปุ่มด้านล่างเพื่อเปิดไฟล์',
     pdf_open: 'เปิดไฟล์ PDF',
@@ -675,6 +676,7 @@ var I18N = {
     signup_instant: 'You can start using it right after signing up.',
     ph_review_summary: 'Review summary (optional)',
     msg_pdf_done_pre: 'PDF created: ',
+    msg_pdf_saved_pre: 'Downloaded: ',
     pdf_ready_title: 'PDF ready',
     pdf_ready_text: 'Your browser blocked the new window. Use the button below to open the file.',
     pdf_open: 'Open the PDF',
@@ -3813,6 +3815,10 @@ function exportPdfFor(claimId) {
       toast(res.errors.join(' '), 'err');
       return;
     }
+    if (savePdfFile(res)) {
+      toast(t('msg_pdf_saved_pre') + res.name, 'ok');
+      return;
+    }
     toast(t('msg_pdf_done_pre') + res.name, 'ok');
     var win = null;
     try {
@@ -3820,6 +3826,30 @@ function exportPdfFor(claimId) {
     } catch (e) {}
     if (!win) offerPdfLink(res.url);
   });
+}
+
+function savePdfFile(res) {
+  if (!res.bytes || typeof Blob === 'undefined' || !window.URL || !URL.createObjectURL) return false;
+  try {
+    var bin = atob(res.bytes);
+    var buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    var href = URL.createObjectURL(new Blob([ buf ], { type: 'application/pdf' }));
+    var a = document.createElement('a');
+    if (!('download' in a)) return false;
+    a.href = href;
+    a.download = res.name;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() {
+      URL.revokeObjectURL(href);
+    }, 6e4);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function offerPdfLink(url) {

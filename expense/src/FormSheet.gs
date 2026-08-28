@@ -193,7 +193,8 @@ function exportPdfInternal_(claimId) {
     return {
       ok: true,
       url: fileUrl,
-      name: name
+      name: name,
+      bytes: Utilities.base64Encode(blob.getBytes())
     };
   } catch (err) {
     return {
