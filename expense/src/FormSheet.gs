@@ -145,6 +145,7 @@ function renderFormSheet_(claimId) {
     var c = signCols[b.key];
     var by = claim[b.byField] || '';
     var at = claim[b.atField] || '';
+    sh.getRange(37, c, 1, 4).merge().setBorder(null, null, true, null, null, null, '#444444', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     sh.getRange(38, c, 1, 4).merge().setValue(b.en).setFontSize(9).setFontWeight('bold').setHorizontalAlignment('center');
     sh.getRange(39, c, 1, 4).merge().setValue(by ? signerName_(by) : '……......./……........../…...........').setFontSize(9).setHorizontalAlignment('center');
     sh.getRange(40, c, 1, 4).merge().setValue(at ? 'วันที่ ' + at : '').setFontSize(8).setFontColor('#5a6577').setHorizontalAlignment('center');
@@ -164,6 +165,7 @@ function renderFormSheet_(claimId) {
   for (var hr = 3; hr <= 6; hr++) sh.setRowHeight(hr, 28);
   sh.setRowHeight(7, 30);
   sh.setRowHeight(8, 34);
+  for (var sr = 35; sr <= 37; sr++) sh.setRowHeight(sr, 26);
   SpreadsheetApp.flush();
   return sh;
 }
