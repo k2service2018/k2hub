@@ -2657,7 +2657,11 @@ function renderDecisionPanel() {
 
   var fuel = $('#rvDecFuel');
   fuel.hidden = fuelAmount === 0 && fuelLiter === 0;
-  fuel.textContent = t('lbl_fuel_memo') + ' ' + money(fuelLiter) + ' ' + t('unit_liter') + ' · ' + money(fuelAmount) + ' ' + t('unit_baht');
+  fuel.innerHTML = '';
+  fuel.appendChild(el('span', { text: t('lbl_fuel_memo') }));
+  fuel.appendChild(el('b', { text: money(fuelLiter) + ' ' + t('unit_liter') }));
+  fuel.appendChild(el('span', { text: '·' }));
+  fuel.appendChild(el('b', { text: money(fuelAmount) + ' ' + t('unit_baht') }));
 
   var wrap = $('#rvDecGroups');
   wrap.innerHTML = '';
