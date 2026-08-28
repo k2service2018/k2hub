@@ -101,6 +101,7 @@ var I18N = {
     fuel_row_pre: 'ค่าน้ำมันบรรทัดที่ ',
     err_no_liter: ': ยังไม่ได้ระบุจำนวนลิตร',
     lbl_fuel_memo: 'ค่าน้ำมัน Fleet Card (ไม่รวมในยอดเบิก):',
+    lbl_total_spend: 'ค่าใช้จ่ายที่เกิดขึ้นจริงทั้งหมด (รวม Fleet Card)',
     lbl_not_reimbursed: 'ไม่รวมในยอดเบิก',
     unit_liter: 'ลิตร',
     unit_baht: 'บาท',
@@ -392,6 +393,7 @@ var I18N = {
     fuel_row_pre: 'Fuel row ',
     err_no_liter: ': litres are missing',
     lbl_fuel_memo: 'Fleet card fuel (not reimbursed):',
+    lbl_total_spend: 'Total actually spent (incl. fleet card)',
     lbl_not_reimbursed: 'not reimbursed',
     unit_liter: 'L',
     unit_baht: 'THB',
@@ -2642,6 +2644,14 @@ function renderDecisionPanel() {
   $('#rvDecTotal').textContent = money(claimTotal);
   $('#rvDecCur').textContent = BOOT.cfg.currency;
   $('#rvDecCount').textContent = REVIEW.items.length + t('suffix_items');
+
+  var spend = $('#rvDecSpend');
+  spend.hidden = fuelAmount === 0;
+  if (!spend.hidden) {
+    spend.innerHTML = '';
+    spend.appendChild(el('span', { text: t('lbl_total_spend') }));
+    spend.appendChild(el('b', { text: money(claimTotal + fuelAmount) + ' ' + BOOT.cfg.currency }));
+  }
 
   var flagged = REVIEW.items.filter(function(it) {
     return it.reviewFlag === 'flag';
