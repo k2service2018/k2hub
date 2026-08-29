@@ -165,7 +165,7 @@ var I18N = {
     ttl_by_person: 'แยกตามผู้เบิก',
     col_expense_type: 'ประเภทค่าใช้จ่าย',
     col_account_group: 'หมวดบัญชี',
-    col_share: 'สัดส่วน',
+    col_share: 'สัดส่วนของยอดรวม',
     col_employee: 'ผู้เบิก',
     col_claim_count: 'จำนวนใบเบิก',
     col_claimable: 'ยอดเบิกได้',
@@ -485,7 +485,7 @@ var I18N = {
     ttl_by_person: 'By person',
     col_expense_type: 'Expense type',
     col_account_group: 'Account group',
-    col_share: 'Share',
+    col_share: 'Share of total',
     col_employee: 'Employee',
     col_claim_count: 'Claims',
     col_claimable: 'Claimable',
@@ -3186,8 +3186,8 @@ function renderDash(res) {
   $('#dashBody').hidden = none;
   if (none) return;
 
-  var base = tot.claim || 1;
-  renderDonut($('#dashGroups'), res.byGroup, tot.claim, function(g) {
+  var base = tot.spend || 1;
+  renderDonut($('#dashGroups'), res.byGroup, tot.spend, function(g) {
     return L(g) + (g.account ? ' · ' + g.account : '');
   });
   $('#dashTrendWrap').hidden = !(res.byMonth || []).length;
@@ -3203,23 +3203,15 @@ function renderDash(res) {
   res.byType.forEach(function(ty) {
     var g = findGroup(ty.groupKey) || {};
     var pct = Math.round(ty.amount / base * 1000) / 10;
-    tbody.appendChild(el('tr', {}, [
-      el('td', { text: L(ty) }),
+    var name = el('td', {}, [ el('span', { text: L(ty) }) ]);
+    if (ty.fleetCard) name.appendChild(el('span', { class: 'tag-noclaim', text: t('not_claimed') }));
+    tbody.appendChild(el('tr', ty.fleetCard ? { class: 'row--fuel' } : {}, [
+      name,
       el('td', { class: 'muted', text: L(g) + (g.account ? ' · ' + g.account : '') }),
       el('td', { class: 'num', text: money(ty.amount) }),
       el('td', { class: 'num muted', text: pct + '%' })
     ]));
   });
-  if (tot.fuel) {
-    var fuelField = expenseTypeByKey(FUEL_KEY) || {};
-    var fg = findGroup(fuelField.groupKey) || {};
-    tbody.appendChild(el('tr', { class: 'row--fuel' }, [
-      el('td', { text: L(fuelField) }),
-      el('td', { class: 'muted', text: L(fg) + (fg.account ? ' · ' + fg.account : '') }),
-      el('td', { class: 'num', text: money(tot.fuel) }),
-      el('td', { class: 'num muted', text: t('not_claimed') })
-    ]));
-  }
 
   var wrap = $('#dashPeopleWrap');
   wrap.hidden = !res.seesAll || res.byPerson.length < 2;

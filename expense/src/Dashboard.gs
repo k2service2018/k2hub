@@ -64,7 +64,7 @@ function getDashboard(token, filter) {
   var claimable = claimableFields_();
   var fleet = fleetFields_();
   var byType = {};
-  claimable.forEach(function(f) { byType[f.key] = 0; });
+  claimable.concat(fleet).forEach(function(f) { byType[f.key] = 0; });
   var byPerson = {};
   var byMonth = {};
   var totalClaim = 0, totalFuel = 0, totalLiter = 0, itemCount = 0;
@@ -83,7 +83,13 @@ function getDashboard(token, filter) {
         byType[f.key] += v;
         rowClaim += v;
       });
-      var rowFuel = fleet.reduce(function(s, f) { return s + num_(it[f.key]); }, 0);
+      var rowFuel = 0;
+      fleet.forEach(function(f) {
+        var v = num_(it[f.key]);
+        if (!v) return;
+        byType[f.key] += v;
+        rowFuel += v;
+      });
       var rowLiter = num_(it.liter);
 
       totalClaim += rowClaim;
@@ -114,10 +120,10 @@ function getDashboard(token, filter) {
   });
 
   var groupTotals = {};
-  var typeRows = claimable.map(function(f) {
+  var typeRows = claimable.concat(fleet).map(function(f) {
     var amount = round2_(byType[f.key]);
     groupTotals[f.groupKey] = round2_((groupTotals[f.groupKey] || 0) + amount);
-    return { key: f.key, th: f.th, en: f.en, groupKey: f.groupKey, amount: amount };
+    return { key: f.key, th: f.th, en: f.en, groupKey: f.groupKey, amount: amount, fleetCard: !!f.fleetCard };
   }).filter(function(t) { return t.amount !== 0; }).sort(function(a, b) { return b.amount - a.amount; });
 
   var groupRows = GROUPS.map(function(g) {
