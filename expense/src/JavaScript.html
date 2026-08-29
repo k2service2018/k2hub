@@ -1237,6 +1237,12 @@ function enterApp() {
   $('#app').hidden = false;
   applyIdentity();
   routeInitial();
+  refreshBadges();
+}
+
+function refreshBadges() {
+  if (!$('[data-view="inbox"]').hidden && $('#view-inbox').hidden) refreshInbox(true);
+  if (!$('[data-view="admin"]').hidden && $('#view-admin').hidden) refreshAdmin(true);
 }
 
 function canOpenView(view) {
@@ -3429,8 +3435,8 @@ function renderDash(res) {
   }
 }
 
-function refreshInbox() {
-  return call('listPendingApprovals', [], t('busy_load_inbox')).then(function(res) {
+function refreshInbox(silent) {
+  return call('listPendingApprovals', [], silent ? null : t('busy_load_inbox')).then(function(res) {
     var body = $('#inboxBody');
     body.innerHTML = '';
     $('#inboxEmpty').hidden = res.rows.length > 0;
@@ -3642,13 +3648,13 @@ function refreshList() {
   }).catch(failLoad);
 }
 
-function refreshAdmin() {
+function refreshAdmin(silent) {
   var filter = {
     status: $('#aStatus').value,
     role: $('#aRole').value,
     q: $('#aQuery').value.trim()
   };
-  call('listUsers', [ filter ], t('busy_load_users')).then(function(res) {
+  call('listUsers', [ filter ], silent ? null : t('busy_load_users')).then(function(res) {
     if (!res.ok) {
       toast(res.errors.join(' '), 'err');
       return;
