@@ -1152,7 +1152,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
     if (ME && ME.active) enterApp(); else showAuth('login');
   }).catch(function(err) {
-    $('#boot').innerHTML = '<p style="color:var(--bad-text);padding:24px;text-align:center">' + t('boot_fail_pre') + (err && err.message ? err.message : err) + '</p>';
+    $('#boot').innerHTML = '<p style="color:var(--bad-text);padding:24px;text-align:center">' + escapeText(t('boot_fail_pre') + (err && err.message ? err.message : err)) + '</p>';
   });
 });
 
@@ -1396,6 +1396,9 @@ function openResetForm(token) {
     }
     showAuth('reset');
     $('#resetEmail').textContent = res.email;
+  }).catch(function(err) {
+    showAuth('login');
+    showErrors([ t('err_pre') + (err.message || err) ], '#authErrors');
   });
 }
 
@@ -1414,6 +1417,8 @@ function doReset() {
     RESET_TOKEN = '';
     showAuth('login');
     showNotice(res.message);
+  }).catch(function(err) {
+    showErrors([ t('err_pre') + (err.message || err) ], '#authErrors');
   });
 }
 
@@ -1560,10 +1565,10 @@ function doChangePassword() {
     [ '#pwOld', '#pwNew', '#pwConfirm' ].forEach(function(s) {
       $(s).value = '';
     });
-    setToken('');
-    ME = null;
-    showAuth('login');
+    clearSession(false);
     showNotice(res.message);
+  }).catch(function(err) {
+    showErrors([ t('err_pre') + (err.message || err) ], '#pwErrors');
   });
 }
 

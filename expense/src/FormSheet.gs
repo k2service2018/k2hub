@@ -180,7 +180,11 @@ function exportPdf(token, claimId) {
 
 function exportPdfInternal_(claimId) {
   var lock = LockService.getScriptLock();
-  lock.waitLock(6e4);
+  var owned = false;
+  if (!lock.hasLock()) {
+    lock.waitLock(6e4);
+    owned = true;
+  }
   var sh = null;
   try {
     sh = renderFormSheet_(claimId);
@@ -222,6 +226,6 @@ function exportPdfInternal_(claimId) {
         ss_().deleteSheet(sh);
       } catch (e) {}
     }
-    lock.releaseLock();
+    if (owned) lock.releaseLock();
   }
 }

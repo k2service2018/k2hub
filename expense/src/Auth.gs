@@ -92,6 +92,16 @@ function updateUserRow_(rowNumber, obj) {
   sh.getRange(rowNumber, 1, 1, headers.length).setValues([ current ]);
 }
 
+function updateUserRowSafe_(rowNumber, obj) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(3e4);
+  try {
+    updateUserRow_(rowNumber, obj);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function findUserByEmail_(email) {
   if (!email) return null;
   var target = normEmail_(email);
@@ -283,7 +293,7 @@ function login(email, password) {
   }
   var computed = hashPassword_(password || '', user.Salt);
   if (!constantTimeEquals_(computed, String(user.PasswordHash))) return fail;
-  updateUserRow_(user._row, {
+  updateUserRowSafe_(user._row, {
     LastLogin: nowIso_()
   });
   var token = createSession_(user);
@@ -414,7 +424,7 @@ function changeMyPassword(token, oldPassword, newPassword) {
 
 function setUserPassword_(row, newPassword) {
   var salt = Utilities.getUuid();
-  updateUserRow_(row, {
+  updateUserRowSafe_(row, {
     PasswordHash: hashPassword_(newPassword, salt),
     Salt: salt,
     UpdatedAt: nowIso_()

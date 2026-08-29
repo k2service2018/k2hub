@@ -33,10 +33,15 @@ function loadClaimRow_(claimId) {
 }
 
 function writeClaimFields_(ctx, changes) {
+  var row = ctx.sheet.getRange(ctx.row, 1, 1, CLAIM_COLUMNS.length).getValues()[0];
+  var touched = false;
   Object.keys(changes).forEach(function(k) {
     var c = CLAIM_COLUMNS.indexOf(k);
-    if (c >= 0) ctx.sheet.getRange(ctx.row, c + 1).setValue(changes[k]);
+    if (c < 0) return;
+    row[c] = changes[k];
+    touched = true;
   });
+  if (touched) ctx.sheet.getRange(ctx.row, 1, 1, CLAIM_COLUMNS.length).setValues([ row ]);
 }
 
 function canCheckClaim_(claim, me) {
@@ -302,15 +307,19 @@ function saveItemReview(token, claimId, reviews, comment) {
     var flagCol = ITEM_COLUMNS.indexOf('reviewFlag') + 1;
     var noteCol = ITEM_COLUMNS.indexOf('reviewNote') + 1;
     var values = sh.getRange(2, 1, sh.getLastRow() - 1, ITEM_COLUMNS.length).getValues();
+    var block = values.map(function(r) {
+      return [ r[flagCol - 1], r[noteCol - 1] ];
+    });
     var saved = 0;
     for (var i = 0; i < values.length; i++) {
       if (String(values[i][0]) !== String(claimId)) continue;
       var hit = bySeq[String(values[i][1])];
       if (!hit) continue;
-      sh.getRange(i + 2, flagCol).setValue(hit.flag);
-      sh.getRange(i + 2, noteCol).setValue(hit.note);
+      block[i][0] = hit.flag;
+      block[i][1] = hit.note;
       saved++;
     }
+    if (saved) sh.getRange(2, flagCol, block.length, 2).setValues(block);
     if (comment !== undefined && comment !== null) {
       writeClaimFields_(ctx, {
         checkComment: comment,
