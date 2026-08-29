@@ -102,7 +102,8 @@ function getBootstrap(token) {
       lockAfterSubmit: CFG.LOCK_AFTER_SUBMIT,
       autoApproveRegistration: CFG.AUTO_APPROVE_REGISTRATION,
       requirePaymentStep: CFG.REQUIRE_PAYMENT_STEP,
-      minPasswordLen: CFG.MIN_PASSWORD_LEN
+      minPasswordLen: CFG.MIN_PASSWORD_LEN,
+      idleSec: CFG.SESSION.IDLE_SEC
     },
     headerFields: HEADER_FIELDS,
     itemFields: ITEM_FIELDS,

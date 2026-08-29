@@ -378,6 +378,8 @@ var I18N = {
     title_approve_claim: 'อนุมัติใบเบิก',
     at_least_pre: 'อย่างน้อย ',
     msg_signed_out: 'ออกจากระบบแล้ว',
+    msg_idle_logout: 'ออกจากระบบอัตโนมัติ เพราะไม่มีการใช้งานเป็นเวลานาน',
+    msg_idle_saved: 'ออกจากระบบอัตโนมัติ เพราะไม่มีการใช้งานเป็นเวลานาน — บันทึกรายการล่าสุดเป็นฉบับร่างไว้ให้แล้ว',
     err_login_failed: 'เข้าสู่ระบบไม่สำเร็จ',
     was_rejected_at_pre: 'เคยถูกตีกลับในขั้น ',
     err_session_expired: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
@@ -698,6 +700,8 @@ var I18N = {
     title_approve_claim: 'Approve claim',
     at_least_pre: 'At least ',
     msg_signed_out: 'Signed out',
+    msg_idle_logout: 'Signed out automatically after a long period of inactivity',
+    msg_idle_saved: 'Signed out automatically after a long period of inactivity — your latest work was saved as a draft',
     err_login_failed: 'Sign-in failed',
     was_rejected_at_pre: 'Previously sent back at ',
     err_session_expired: 'Session expired — please sign in again',
@@ -895,6 +899,7 @@ function call(fn, args, msg) {
     if (msg) showOverlay(msg);
     google.script.run.withSuccessHandler(function(res) {
       hideOverlay();
+      resetIdleTimer();
       if (res && res.ok === false && res.authRequired) {
         handleSessionExpired();
         resolve(res);
@@ -912,9 +917,7 @@ function call(fn, args, msg) {
 }
 
 function handleSessionExpired() {
-  setToken('');
-  ME = null;
-  showAuth('login');
+  clearSession(false);
   toast(t('err_session_expired'), 'err');
 }
 
@@ -1150,6 +1153,7 @@ window.addEventListener('DOMContentLoaded', function() {
     buildSummaryCards();
     bindActions();
     bindAuthActions();
+    bindIdleWatch();
     applyStatic();
     $('#boot').hidden = true;
     if (RESET_TOKEN) {
@@ -1433,13 +1437,78 @@ function confirmLogout() {
   });
 }
 
-function doLogout() {
-  var token = getToken();
+function clearSession(clearEmail) {
+  stopIdleTimer();
   setToken('');
   ME = null;
-  call('logout', [ token ]).then(function() {
-    showAuth('login');
-    showNotice(t('msg_signed_out'));
+  STATE.claimId = '';
+  STATE.status = '';
+  STATE.rows = [];
+  STATE.fuelRows = [];
+  STATE.perms = {};
+  STATE.readonly = false;
+  STATE.dirty = false;
+  REVIEW.claimId = '';
+  REVIEW.claim = null;
+  REVIEW.res = null;
+  REVIEW.items = [];
+  REVIEW.perms = {};
+  DASH.loaded = false;
+  if (clearEmail) $('#loginEmail').value = '';
+  $('#loginPassword').value = '';
+  showAuth('login');
+}
+
+function doLogout() {
+  var token = getToken();
+  stopIdleTimer();
+  clearSession(true);
+  showNotice(t('msg_signed_out'));
+  if (token) call('logout', [ token ]).catch(function() {});
+}
+
+var IDLE = { timer: 0, ms: 0 };
+
+function bindIdleWatch() {
+  var sec = BOOT && BOOT.cfg && Number(BOOT.cfg.idleSec) || 0;
+  IDLE.ms = sec > 0 ? sec * 1e3 : 0;
+  if (!IDLE.ms) return;
+  [ 'mousedown', 'keydown', 'touchstart', 'wheel', 'focusin' ].forEach(function(evt) {
+    document.addEventListener(evt, resetIdleTimer, true);
+  });
+  resetIdleTimer();
+}
+
+function stopIdleTimer() {
+  if (IDLE.timer) clearTimeout(IDLE.timer);
+  IDLE.timer = 0;
+}
+
+function resetIdleTimer() {
+  stopIdleTimer();
+  if (!IDLE.ms || !getToken()) return;
+  IDLE.timer = setTimeout(idleLogout, IDLE.ms);
+}
+
+function keepLatestWork() {
+  if (STATE.readonly || !STATE.dirty) return Promise.resolve(false);
+  if ($('#view-form').hidden) return Promise.resolve(false);
+  if (!filledRows(GRIDS.exp).length && !filledRows(GRIDS.fuel).length) return Promise.resolve(false);
+  return call('saveClaim', [ collectPayload() ]).then(function(res) {
+    return !!(res && res.ok);
+  }).catch(function() {
+    return false;
+  });
+}
+
+function idleLogout() {
+  stopIdleTimer();
+  var token = getToken();
+  if (!token) return;
+  keepLatestWork().then(function(saved) {
+    clearSession(false);
+    showNotice(saved ? t('msg_idle_saved') : t('msg_idle_logout'));
+    call('logout', [ token ]).catch(function() {});
   });
 }
 
