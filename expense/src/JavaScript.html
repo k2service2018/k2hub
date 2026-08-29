@@ -114,8 +114,6 @@ var I18N = {
     f_old_password: 'รหัสผ่านเดิม',
     f_new_password: 'รหัสผ่านใหม่',
     f_confirm_new_password: 'ยืนยันรหัสผ่านใหม่',
-    f_checker_email: 'อีเมล Admin ผู้ตรวจสอบ',
-    f_approver_email: 'อีเมล Manager ผู้อนุมัติ',
     act_login: 'เข้าสู่ระบบ',
     act_logout: 'ออกจากระบบ',
     act_forgot: 'ลืมรหัสผ่าน?',
@@ -205,7 +203,6 @@ var I18N = {
     hint_pick_from_inbox: 'เลือกใบเบิกจากรายการที่รอคุณดำเนินการ เพื่อเริ่มตรวจสอบหรืออนุมัติ',
     hint_toggle_flag: 'คลิกที่ปุ่มผลตรวจเพื่อสลับ ผ่าน / ติดปัญหา',
     grid_hint: 'หนึ่งบรรทัดคือหนึ่งใบเสร็จ — เลือกประเภทค่าใช้จ่าย แล้วใส่จำนวนเงินช่องเดียว ระบบจะลงคอลัมน์ให้ตรงกับแบบฟอร์ม Excel เอง กด Enter เพื่อไปบรรทัดถัดไป',
-    lbl_grand_total: 'ยอดรวมทั้งสิ้น',
     lbl_claim_total: 'ยอดที่ขอเบิก',
     lbl_grand_total_all: 'ยอดรวมทั้งสิ้น (รวม Fleet Card)',
     lbl_only_mine: 'เฉพาะที่ฉันจัดทำ',
@@ -221,7 +218,6 @@ var I18N = {
     ph_search_claims: 'ค้นหา เลขที่ / ชื่อ / แผนก',
     ph_search_users: 'ค้นหา ชื่อ / อีเมล / แผนก',
     ph_note: 'ระบุข้อมูลเพิ่มเติม (ถ้ามี)',
-    ph_checker_blank: 'เว้นว่าง = ส่งให้ Admin ทุกคน',
     ph_review_comment: 'สรุปผลการตรวจสอบ หรือเหตุผลที่ตีกลับ',
     col_claim_no: 'เลขที่',
     col_status: 'สถานะ',
@@ -262,7 +258,6 @@ var I18N = {
     err_need_email_pw: 'กรุณากรอกอีเมลและรหัสผ่าน',
     err_check_data_pre: 'กรุณาตรวจสอบข้อมูล (',
     err_save_first: 'กรุณาบันทึกใบเบิกก่อน',
-    err_need_approver: 'กรุณาระบุอีเมล Manager ผู้อนุมัติ',
     err_register_first: 'กรุณาลงทะเบียนก่อนใช้งาน',
     busy_working: 'กำลังดำเนินการ…',
     busy_check_link: 'กำลังตรวจสอบลิงก์…',
@@ -436,8 +431,6 @@ var I18N = {
     f_old_password: 'Current password',
     f_new_password: 'New password',
     f_confirm_new_password: 'Confirm new password',
-    f_checker_email: 'Checker (Admin) email',
-    f_approver_email: 'Approver (Manager) email',
     act_login: 'Sign in',
     act_logout: 'Sign out',
     act_forgot: 'Forgot password?',
@@ -527,7 +520,6 @@ var I18N = {
     hint_pick_from_inbox: 'Pick a claim from your queue to check or approve it.',
     hint_toggle_flag: 'Click the result button to toggle Passed / Flagged.',
     grid_hint: 'One row is one receipt — pick an expense type and enter a single amount; the system files it into the right Excel column for you. Press Enter for the next row.',
-    lbl_grand_total: 'Grand total',
     lbl_claim_total: 'Amount claimed',
     lbl_grand_total_all: 'Grand total (incl. fleet card)',
     lbl_only_mine: 'Only mine',
@@ -543,7 +535,6 @@ var I18N = {
     ph_search_claims: 'Search no. / name / dept.',
     ph_search_users: 'Search name / email / dept.',
     ph_note: 'Any extra information (optional)',
-    ph_checker_blank: 'Leave blank = send to every Admin',
     ph_review_comment: 'Review summary, or the reason for sending it back',
     col_claim_no: 'No.',
     col_status: 'Status',
@@ -584,7 +575,6 @@ var I18N = {
     err_need_email_pw: 'Please enter email and password',
     err_check_data_pre: 'Please check the form (',
     err_save_first: 'Please save the claim first',
-    err_need_approver: 'Please enter the approving Manager email',
     err_register_first: 'Please complete your registration first',
     busy_working: 'Working…',
     busy_check_link: 'Checking link…',
@@ -1173,7 +1163,14 @@ function enterApp() {
   routeInitial();
 }
 
+function canOpenView(view) {
+  if (!view) return false;
+  var tab = document.querySelector('[data-view="' + view + '"]');
+  return !!(tab && !tab.hidden);
+}
+
 function routeInitial() {
+  if (ME.canClaim) newClaim();
   if (INITIAL_CLAIM_ID && (INITIAL_PAGE === 'review' || INITIAL_PAGE === 'inbox')) {
     openReview(INITIAL_CLAIM_ID);
     return;
@@ -1182,13 +1179,10 @@ function routeInitial() {
     loadClaim(INITIAL_CLAIM_ID);
     return;
   }
-  if (INITIAL_PAGE === 'list' || INITIAL_PAGE === 'inbox' || INITIAL_PAGE === 'admin' || INITIAL_PAGE === 'register') {
-    if (!(INITIAL_PAGE === 'list' && !ME.canClaim)) {
-      switchView(INITIAL_PAGE);
-      return;
-    }
+  if (canOpenView(INITIAL_PAGE)) {
+    switchView(INITIAL_PAGE);
+    return;
   }
-  newClaim();
   switchView(landingView());
 }
 
@@ -3412,6 +3406,8 @@ function payFromInbox(claimId) {
       toast(res.ok ? res.message : res.errors.join(' '), res.ok ? 'ok' : 'err');
       if (res.ok) refreshInbox();
     });
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
   });
 }
 
@@ -3508,6 +3504,8 @@ function refreshList() {
                 if (STATE.claimId === c.claimId) newClaim();
               }
             });
+          }).catch(function(err) {
+            toast(t('err_pre') + (err.message || err), 'err');
           });
         });
         act.appendChild(del);
@@ -3604,6 +3602,8 @@ function refreshAdmin() {
         } ], t('busy_saving')).then(function(r) {
           toast(r.ok ? r.message : r.errors.join(' '), r.ok ? 'ok' : 'err');
           if (r.ok) refreshAdmin();
+        }).catch(function(err) {
+          toast(t('err_pre') + (err.message || err), 'err');
         });
       });
       act.appendChild(save);
@@ -3818,6 +3818,8 @@ function bindActions() {
         REVIEW.claimId = '';
         switchView('inbox');
       });
+    }).catch(function(err) {
+      toast(t('err_pre') + (err.message || err), 'err');
     });
   });
   $('#btnRvReject').addEventListener('click', function() {
@@ -3904,6 +3906,8 @@ function exportPdfFor(claimId) {
       win = window.open(res.url, '_blank');
     } catch (e) {}
     if (!win) offerPdfLink(res.url);
+  }).catch(function(err) {
+    toast(t('err_pre') + (err.message || err), 'err');
   });
 }
 
