@@ -380,8 +380,9 @@ function saveClaim(token, payload) {
       });
       record.approverEmail = record.approverEmail || existing.approverEmail || '';
       claimsSh.getRange(row, 1, 1, CLAIM_COLUMNS.length).setValues([ objectToRow_(CLAIM_COLUMNS, record) ]);
-      if (normEmail_(existing.createdBy) !== me.email) {
-        logApproval_(claimId, 'Edit', existing.status, existing.status, 'แก้ไขรายการระหว่างขั้นตอน');
+      var afterEditWindow = EDITABLE_STATUSES.indexOf(existing.status) < 0;
+      if (afterEditWindow || normEmail_(existing.createdBy) !== me.email) {
+        logApproval_(claimId, 'Edit', existing.status, existing.status, afterEditWindow ? 'แก้ไขหลังใบเบิกพ้นช่วงที่แก้ไขได้แล้ว (สถานะ ' + statusLabel_(existing.status) + ')' : 'แก้ไขรายการระหว่างขั้นตอน');
       }
     } else {
       claimsSh.appendRow(objectToRow_(CLAIM_COLUMNS, record));

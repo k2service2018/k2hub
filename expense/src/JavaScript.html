@@ -1,4 +1,7 @@
 <script>
+var DATE_MIN = '2000-01-01';
+var DATE_MAX = '2100-12-31';
+
 var BOOT = null;
 
 var ME = null;
@@ -1798,7 +1801,9 @@ function buildHeaderFields() {
       id: id
     }); else if (f.type === 'date') input = el('input', {
       type: 'date',
-      id: id
+      id: id,
+      min: DATE_MIN,
+      max: DATE_MAX
     }); else if (list && list.length) {
       input = el('input', {
         type: 'text',
@@ -2109,7 +2114,7 @@ function buildRowEl(grid, row, index) {
     return input;
   }
 
-  var dateInput = cell('c-date', el('input', { type: 'date', title: t('col_date') }));
+  var dateInput = cell('c-date', el('input', { type: 'date', title: t('col_date'), min: DATE_MIN, max: DATE_MAX }));
   var receiptInput = cell('c-receiptNo', el('input', { type: 'text', title: t('col_receipt'), autocomplete: 'off' }));
   var descInput = cell('c-description', el('input', { type: 'text', title: t('col_description'), autocomplete: 'off' }));
 
