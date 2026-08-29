@@ -326,6 +326,11 @@ td.c-amount input { font-weight: 700; }
 .row--fuel td.muted { color: var(--warn-text); opacity: .8; }
 .tag-noclaim { margin-left: 8px; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; font-size: 11px; font-weight: 600; letter-spacing: .02em; opacity: .75; white-space: nowrap; }
 
+.pbar { height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; margin: 4px 0 10px; }
+.pbar i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--brand); transition: width .2s linear; }
+.pbar__cap { margin: 0; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.spin { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -3px; }
+
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
 .chart { min-width: 0; }
 .chart .dash__h { margin-top: 20px; }
@@ -624,6 +629,9 @@ td.c-amount input { font-weight: 700; }
 .nextstep__icon { font-size: 16px; font-weight: 700; color: var(--brand); line-height: 1; }
 .nextstep p { margin: 0; font-size: 14px; font-weight: 600; color: var(--brand-text); }
 .nextstep strong { color: var(--brand); }
+.nextstep--wait { background: var(--bg-subtle); border-color: var(--border); border-left-color: var(--text-subtle); }
+.nextstep--wait .nextstep__icon { color: var(--text-muted); }
+.nextstep--wait p { color: var(--text-muted); font-weight: 500; }
 
 .card--decision { border-left: 4px solid var(--ok); }
 .decision { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }

@@ -1,7 +1,7 @@
 function doGet(e) {
   var p = e && e.parameter || {};
   var t = HtmlService.createTemplateFromFile('Index');
-  t.initialPage = safeParam_(p.page) || 'form';
+  t.initialPage = safeParam_(p.page);
   t.initialClaimId = safeParam_(p.id);
   t.resetToken = safeParam_(p.reset);
   return t.evaluate().setTitle(CFG.APP_TITLE + ' — ' + CFG.DOC_NO).addMetaTag('viewport', 'width=device-width, initial-scale=1').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);

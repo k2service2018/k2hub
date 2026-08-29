@@ -152,6 +152,14 @@ var I18N = {
     next_approve_todo: 'ตรวจยอดและผลการตรวจของ Admin แล้วกดปุ่ม',
     next_pay_todo: 'ใบนี้อนุมัติแล้ว — กดปุ่ม',
     next_suffix: ' ที่มุมขวาล่าง',
+    next_suffix_left: ' ที่มุมซ้ายล่าง',
+    fnext_empty: 'เริ่มจากกรอกข้อมูลผู้เบิกและรายการค่าใช้จ่าย แล้วกด',
+    fnext_ready: 'กรอกครบแล้ว — ตรวจความถูกต้องอีกครั้งแล้วกด',
+    fnext_draft: 'บันทึกฉบับร่างไว้แล้ว — เมื่อพร้อมส่งให้กด',
+    fnext_rejected: 'ใบนี้ถูกตีกลับ — แก้ตามหมายเหตุด้านบน แล้วกด',
+    fnext_approved: 'อนุมัติแล้ว — พิมพ์เอกสารได้จากปุ่ม',
+    fnext_paid: 'ใบนี้จ่ายเงินเรียบร้อยแล้ว ไม่ต้องดำเนินการอะไรต่อ',
+    fnext_waiting_pre: 'ส่งเข้าระบบแล้ว รอผู้มีสิทธิ์ดำเนินการ — สถานะปัจจุบัน: ',
     nav_list_all: 'ใบเบิกทั้งหมด',
     nav_dashboard: 'สรุปค่าใช้จ่าย',
     ttl_dashboard: 'สรุปค่าใช้จ่าย',
@@ -270,6 +278,7 @@ var I18N = {
     busy_deleting: 'กำลังลบ…',
     busy_signup: 'กำลังสมัครสมาชิก…',
     busy_pdf: 'กำลังสร้าง PDF…',
+    suffix_sec: ' วินาที',
     busy_forward: 'กำลังส่งต่อ…',
     busy_email: 'กำลังส่งอีเมล…',
     busy_submit: 'กำลังส่งใบเบิก…',
@@ -469,6 +478,14 @@ var I18N = {
     next_approve_todo: 'Review the total and the checker findings, then press',
     next_pay_todo: 'This claim is approved — press',
     next_suffix: ' at the bottom right',
+    next_suffix_left: ' at the bottom left',
+    fnext_empty: 'Start by filling in your details and the expense lines, then press',
+    fnext_ready: 'Everything is filled in — check it once more, then press',
+    fnext_draft: 'Saved as a draft — when you are ready to send it, press',
+    fnext_rejected: 'This claim was sent back — fix the points noted above, then press',
+    fnext_approved: 'Approved — print the document with',
+    fnext_paid: 'This claim has been paid. Nothing further to do.',
+    fnext_waiting_pre: 'Submitted and waiting on the next approver — current status: ',
     nav_list_all: 'All claims',
     nav_dashboard: 'Spending',
     ttl_dashboard: 'Spending summary',
@@ -587,6 +604,7 @@ var I18N = {
     busy_deleting: 'Deleting…',
     busy_signup: 'Creating account…',
     busy_pdf: 'Generating PDF…',
+    suffix_sec: 's',
     busy_forward: 'Forwarding…',
     busy_email: 'Sending email…',
     busy_submit: 'Submitting claim…',
@@ -951,8 +969,63 @@ function showOverlay(msg) {
 }
 
 function hideOverlay() {
+  stopProgress();
   $('#overlay').hidden = true;
   if (swalReady() && Swal.isVisible() && Swal.getTimerLeft() === undefined) Swal.close();
+}
+
+var PROGRESS = { id: 0, started: 0 };
+
+function showProgressOverlay(msg, expectMs) {
+  if (!swalReady()) {
+    showOverlay(msg);
+    return;
+  }
+  var b = swalBase();
+  Swal.fire({
+    title: msg || t('busy_generic'),
+    html: '<div class="pbar"><i id="pbarFill"></i></div><p class="pbar__cap" id="pbarCap">0' + t('suffix_sec') + '</p>',
+    background: b.bg,
+    color: b.fg,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    heightAuto: false,
+    didOpen: function() {
+      startProgress(expectMs || 12e3);
+    }
+  });
+}
+
+function startProgress(expectMs) {
+  stopProgress();
+  PROGRESS.started = Date.now();
+  PROGRESS.id = setInterval(function() {
+    var ms = Date.now() - PROGRESS.started;
+    var fill = document.getElementById('pbarFill');
+    var cap = document.getElementById('pbarCap');
+    if (!fill && !cap) return;
+    if (fill) fill.style.width = Math.min(96, Math.round(96 * (1 - Math.exp(-ms / expectMs)))) + '%';
+    if (cap) cap.textContent = Math.round(ms / 1e3) + t('suffix_sec');
+  }, 200);
+}
+
+function stopProgress() {
+  if (PROGRESS.id) clearInterval(PROGRESS.id);
+  PROGRESS.id = 0;
+}
+
+function btnBusy(btn) {
+  if (!btn) return function() {};
+  var old = btn.innerHTML;
+  var wasDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+  return function() {
+    btn.disabled = wasDisabled;
+    btn.innerHTML = old;
+    renderIcons();
+  };
 }
 
 var toastTimer = null;
@@ -2261,6 +2334,7 @@ function recalcTotals() {
   });
 
   renumber();
+  renderFormNextStep();
 }
 
 function buildSummaryCards() {
@@ -2575,6 +2649,7 @@ function saveDraft() {
     $('#btnPdf').disabled = false;
     STATE.dirty = false;
     toast(res.message + ' (' + res.claimId + ')', 'ok');
+    renderFormNextStep();
   }).catch(function(err) {
     toast(t('err_pre') + (err.message || err), 'err');
   });
@@ -2742,6 +2817,44 @@ function renderReview(res) {
   $('#rvComment').disabled = !(p.canCheck || p.canApprove);
   renderDecisionPanel();
   renderNextStep();
+}
+
+function renderFormNextStep() {
+  var box = $('#formNextStep');
+  if (!box || !BOOT || !GRIDS.exp) return;
+  var status = STATE.status || 'Draft';
+  var filled = filledRows(GRIDS.exp).length + filledRows(GRIDS.fuel).length;
+  var lead = '';
+  var button = '';
+  var suffix = t('next_suffix');
+  var waiting = false;
+  if (status === 'Approved') {
+    lead = t('fnext_approved');
+    button = t('act_print_pdf');
+    suffix = t('next_suffix_left');
+  } else if (status === 'Paid') {
+    lead = t('fnext_paid');
+    waiting = true;
+  } else if (status === 'Submitted' || status === 'Checked' || STATE.readonly) {
+    lead = t('fnext_waiting_pre') + statusLabel(status);
+    waiting = true;
+  } else if (status === 'Rejected') {
+    lead = t('fnext_rejected');
+    button = t('act_submit_admin');
+  } else if (!filled) {
+    lead = t('fnext_empty');
+    button = t('act_save_draft');
+  } else if (!STATE.claimId) {
+    lead = t('fnext_ready');
+    button = t('act_submit_admin');
+  } else {
+    lead = t('fnext_draft');
+    button = t('act_submit_admin');
+  }
+  box.hidden = !lead;
+  box.className = waiting ? 'nextstep nextstep--wait' : 'nextstep';
+  if (!lead) return;
+  $('#formNextStepText').innerHTML = button ? escapeText(lead) + ' <strong>' + escapeText(button) + '</strong>' + escapeText(suffix) : escapeText(lead);
 }
 
 function renderNextStep() {
@@ -3732,7 +3845,7 @@ function bindActions() {
     });
   });
   $('#btnPdf').addEventListener('click', function() {
-    exportPdfFor(STATE.claimId);
+    exportPdfFor(STATE.claimId, this);
   });
   $('#btnGoInbox').addEventListener('click', function() {
     switchView('inbox');
@@ -3741,7 +3854,7 @@ function bindActions() {
     switchView('inbox');
   });
   $('#btnRvPdf').addEventListener('click', function() {
-    exportPdfFor(REVIEW.claimId);
+    exportPdfFor(REVIEW.claimId, this);
   });
   $('#rvEditMode').addEventListener('change', function() {
     REVIEW.editMode = this.checked;
@@ -3891,12 +4004,15 @@ function bindActions() {
   });
 }
 
-function exportPdfFor(claimId) {
+function exportPdfFor(claimId, btn) {
   if (!claimId) {
     toast(t('err_save_first'), 'err');
     return;
   }
-  call('exportPdf', [ claimId ], t('busy_pdf')).then(function(res) {
+  var restore = btnBusy(btn);
+  showProgressOverlay(t('busy_pdf'));
+  call('exportPdf', [ claimId ]).then(function(res) {
+    restore();
     if (!res.ok) {
       toast(res.errors.join(' '), 'err');
       return;
@@ -3912,6 +4028,7 @@ function exportPdfFor(claimId) {
     } catch (e) {}
     if (!win) offerPdfLink(res.url);
   }).catch(function(err) {
+    restore();
     toast(t('err_pre') + (err.message || err), 'err');
   });
 }
