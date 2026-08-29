@@ -259,6 +259,7 @@ function getClaimForReview(token, claimId) {
     flags: REVIEW_FLAGS
   };
   res.requester = profileOfEmail_(res.claim.createdBy);
+  res.approverName = signerName_(res.claim.approverEmail);
   return safeOut_(res);
 }
 
@@ -589,9 +590,16 @@ function getApprovalHistory(claimId) {
     ok: true,
     rows: []
   };
+  var nameByEmail = {};
+  try {
+    readUsers_().forEach(function(u) {
+      if (u.FullName) nameByEmail[normEmail_(u.Email)] = u.FullName;
+    });
+  } catch (e) {}
   var rows = sh.getRange(2, 1, sh.getLastRow() - 1, APPROVAL_COLUMNS.length).getValues().map(function(r) {
     var o = rowToObject_(APPROVAL_COLUMNS, r);
     o.at = o.at instanceof Date ? Utilities.formatDate(o.at, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm') : String(o.at || '');
+    o.actorName = nameByEmail[normEmail_(o.actor)] || '';
     return o;
   }).filter(function(o) {
     return String(o.claimId) === String(claimId);

@@ -225,7 +225,7 @@ var I18N = {
     ph_review_comment: 'สรุปผลการตรวจสอบ หรือเหตุผลที่ตีกลับ',
     col_claim_no: 'เลขที่',
     col_status: 'สถานะ',
-    col_rows: 'บรรทัด',
+    col_rows: 'รายการ',
     col_total: 'ยอดรวม',
     col_updated: 'แก้ไขล่าสุด',
     col_stage: 'ขั้นตอน',
@@ -545,7 +545,7 @@ var I18N = {
     ph_review_comment: 'Review summary, or the reason for sending it back',
     col_claim_no: 'No.',
     col_status: 'Status',
-    col_rows: 'Rows',
+    col_rows: 'Items',
     col_total: 'Total',
     col_updated: 'Updated',
     col_stage: 'Stage',
@@ -2442,7 +2442,8 @@ function renderHistory(rows, listSel, cardSel) {
       text: actionTh[r.action] || r.action
     }), el('span', {
       class: 'tl__who',
-      text: r.actor + (r.role ? ' (' + r.role + ')' : '')
+      title: r.actor || '',
+      text: (r.actorName || r.actor) + (r.role ? ' (' + r.role + ')' : '')
     }), el('span', {
       class: 'tl__at',
       text: r.at
@@ -2624,7 +2625,7 @@ function renderReview(res) {
   $('#rvStatus').className = badgeClass(c.status);
   $('#rvRevision').textContent = Number(c.revision) ? t('revision_pre') + c.revision : t('first_submit');
   var req = res.requester;
-  var meta = [ [ t('col_creator'), c.employee + (c.createdBy ? ' · ' + c.createdBy : '') ], [ t('col_division'), c.division || '-' ], [ t('col_jobtitle'), c.jobTitle || '-' ], [ t('col_period'), c.yearMonth || '-' ], [ t('col_claim_date'), c.claimDate || '-' ], [ t('col_submitted_at'), c.submittedAt || '-' ], [ t('col_approver'), c.approverEmail || '-' ], [ t('col_phone'), req && req.phone || '-' ] ];
+  var meta = [ [ t('col_creator'), c.employee || c.createdBy || '-' ], [ t('col_division'), c.division || '-' ], [ t('col_jobtitle'), c.jobTitle || '-' ], [ t('col_period'), c.yearMonth || '-' ], [ t('col_claim_date'), c.claimDate || '-' ], [ t('col_submitted_at'), c.submittedAt || '-' ], [ t('col_approver'), res.approverName || c.approverEmail || '-' ], [ t('col_phone'), req && req.phone || '-' ] ];
   var dl = $('#rvMeta');
   dl.innerHTML = '';
   meta.forEach(function(m) {
@@ -3149,8 +3150,10 @@ function renderDash(res) {
   var person = $('#dPerson');
   person.hidden = !res.seesAll;
   if (res.seesAll) {
+    var nameSeen = {};
+    res.people.forEach(function(p) { nameSeen[p.name] = (nameSeen[p.name] || 0) + 1; });
     fillDashSelect(person, res.people.map(function(p) {
-      return { value: p.email, text: p.name + ' · ' + p.email };
+      return { value: p.email, text: nameSeen[p.name] > 1 ? p.name + ' · ' + p.email : p.name };
     }), DASH.loaded, t('opt_all_people'));
   }
   fillDashSelect($('#dMonth'), res.months.map(function(m) {
