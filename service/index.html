@@ -46,6 +46,9 @@
     #scanBar button { min-height: 46px; padding: 0 22px; font-size: 15px; font-weight: 600;
       border: 0; border-radius: 10px; background: #fff; color: #333; }
     #scanBar #scanPhoto { background: #4f6ef7; color: #fff; }
+    #scanBar #scanSound { padding: 0 16px; font-size: 19px; }
+    #scanSoundHint { position: fixed; left: 0; right: 0; bottom: 86px; text-align: center;
+      color: #ffd479; font: 12px/1.5 sans-serif; z-index: 10000; display: none; }
     /* The camera's real resolution, on screen. A 1D bar strip lives or dies on
        how many pixels its narrow bars get, and this is the only way to know
        what the phone actually handed over rather than what we asked for. */
@@ -68,8 +71,10 @@
     <div id="scanReader"></div>
     <div id="scanGuide"><i></i><i></i><i></i><i></i></div>
     <div id="scanInfo"></div>
+      <div id="scanSoundHint">แตะจอหนึ่งครั้งเพื่อเปิดเสียง</div>
     <div id="scanBar">
       <button type="button" id="scanPhoto">📷 ถ่ายรูป</button>
+      <button type="button" id="scanSound" title="เสียงเมื่อสแกนสำเร็จ">🔊</button>
       <button type="button" id="scanClose">ปิดกล้อง</button>
     </div>
     <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none">
@@ -190,6 +195,76 @@
       if (scanAsker) { try { scanAsker.postMessage(msg, '*'); } catch (e) {} }
     }
 
+
+    /* ---------- Success beep (the thing a real barcode gun does) ----------
+
+       Web Audio rather than an <audio> file: no asset to fetch, no delay on
+       the first scan, and it still works with no signal in a hospital basement.
+
+       The catch is user activation. openScanner() is driven by a postMessage
+       from the app inside the iframe, and activation does not cross an origin
+       — so this document may never have been touched when the first scan
+       lands. Hence unlock() on every plausible touch, and a visible hint if
+       sound is on but still locked. Once unlocked it stays unlocked for the
+       life of the page, so at worst it is the first scan of a session. */
+    var beepCtx = null;
+    var BEEP_KEY = 'k2ScanBeep';
+
+    function beepOn() {
+      try { return localStorage.getItem(BEEP_KEY) !== '0'; } catch (e) { return true; }
+    }
+
+    function beepUnlock() {
+      if (!beepOn()) return;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!beepCtx) beepCtx = new AC();
+        if (beepCtx.state === 'suspended') beepCtx.resume();
+      } catch (e) { beepCtx = null; }
+      beepHint();
+    }
+
+    function beepReady() { return !!beepCtx && beepCtx.state === 'running'; }
+
+    /* Short, high and dry — a scanner chirp, not a notification tone. The
+       ramps top and tail it so it does not click on cheap phone speakers. */
+    function beepNow() {
+      if (!beepOn()) return;
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+      if (!beepReady()) return;
+      try {
+        var t = beepCtx.currentTime;
+        var osc = beepCtx.createOscillator();
+        var gain = beepCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(2700, t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.3, t + 0.008);
+        gain.gain.setValueAtTime(0.3, t + 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        osc.connect(gain); gain.connect(beepCtx.destination);
+        osc.start(t); osc.stop(t + 0.13);
+      } catch (e) { /* a missing beep must never cost us the scan */ }
+    }
+
+    function beepHint() {
+      var btn = document.getElementById('scanSound');
+      if (btn) btn.textContent = beepOn() ? '🔊' : '🔇';
+      var hint = document.getElementById('scanSoundHint');
+      if (!hint) return;
+      hint.style.display = (scanInst && beepOn() && !beepReady()) ? 'block' : 'none';
+    }
+
+    function beepToggle() {
+      var next = beepOn() ? '0' : '1';
+      try { localStorage.setItem(BEEP_KEY, next); } catch (e) {}
+      // Turning it on IS a tap, so it doubles as the unlock.
+      if (next === '1') beepUnlock(); else beepHint();
+    }
+
+    document.addEventListener('pointerdown', beepUnlock, { passive: true });
+
     function closeScanner(msg) {
       var wrap = document.getElementById('scanWrap');
       wrap.style.display = 'none';
@@ -200,6 +275,9 @@
       dropBandReader();
       var info = document.getElementById('scanInfo');
       if (info) info.textContent = '';
+      // Every success path funnels through here, so one call covers the QR
+      // callback, the ZXing bar-strip pass and the photo fallback alike.
+      if (msg && msg.k2 === 'scanned') beepNow();
       if (msg) scanTell(msg);
       scanAsker = null;
       if (inst) { inst.stop().then(function () { inst.clear(); }).catch(function () {}); }
@@ -211,6 +289,7 @@
       var wrap = document.getElementById('scanWrap');
       wrap.style.display = 'block';
       document.getElementById('scanMsg').textContent = 'กำลังเปิดกล้อง...';
+      beepUnlock();
       // Tell the app at once that the camera is ours now. Without this it
       // cannot tell a wrapper that is working from one too old to know what
       // a scan request is, and it would fall back to a photo mid-scan.
@@ -234,6 +313,7 @@
         function () { /* a miss per frame is normal */ }
       ).then(function () {
         document.getElementById('scanMsg').textContent = 'QR: เล็งในกรอบ · บาร์โค้ดแท่ง: เข้าใกล้ให้เต็มความกว้าง ถือนิ่ง';
+        beepHint();
         /* Ask for a sharper stream now that the camera is running.
 
            This is the whole difference for the bar strip on a UPS. Left to
@@ -378,6 +458,9 @@
       }
       pass();
     }
+
+    document.getElementById('scanSound').addEventListener('click', beepToggle);
+    beepHint();                       // paint 🔊 / 🔇 from the remembered choice
 
     document.getElementById('scanClose').addEventListener('click', function () {
       closeScanner({ k2: 'scanCancel' });
