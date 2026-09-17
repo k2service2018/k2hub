@@ -3,10 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>K2 Expense Claim</title>
-  <meta name="theme-color" content="#e8a13c">
+  <title>K2 Expense System</title>
+  <meta name="theme-color" content="#044fa5">
   <meta name="apple-mobile-web-app-title" content="K2 Expense">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e8a13c'/><text x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>K2</text></svg>">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <style>
     html, body { margin: 0; padding: 0; background: #f4f6fb; overflow: hidden; height: 100%; height: 100svh; }
     iframe { display: block; border: 0; width: 100%; height: 100%; height: 100svh; }
@@ -15,8 +20,17 @@
 <body>
   <iframe
     src="https://script.google.com/macros/s/AKfycbw-8fEu3AHnyfhDvFBFkWqDdTusDOE-utF2b8aAe7_njCAVRD1_6WR1R1ZYkOJJbCVa/exec"
-    title="K2 Expense Claim"
+    title="K2 Expense System"
     allow="clipboard-write"></iframe>
+
+  <script>
+  // ส่งต่อ ?module=req / ?req=... ให้แอปข้างใน เช่นไอคอน Expense Approve เดิมที่ชี้มาหน้านี้
+  (function () {
+    if (!location.search) return;
+    var frame = document.querySelector('iframe');
+    frame.src = frame.src.split('?')[0] + location.search;
+  }());
+  </script>
 
   <script>
   (function () {
