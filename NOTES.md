@@ -109,6 +109,7 @@ measuring overlay")
 | Tender | เขียวน้ำทะเล `#0ea5a4` |
 | Expense | ส้มอำพัน `#e8a13c` |
 | Sale | เขียว `#2f9e44` |
+| Activity | ม่วง `#7c3aed` |
 
 ---
 
@@ -172,3 +173,17 @@ Admin Checklist / Dashboard) เปิดด้วย `window.open(..., '_blank'
 
 ถ้าวันหนึ่งต้องออก **deployment ใหม่** (ไม่ใช่แค่ redeploy เวอร์ชันเดิม) ต้องมาแก้ URL
 ในไฟล์หน้าห่อด้วย ไม่งั้นทีมจะยังเห็นของเก่า
+
+---
+
+## activity — K2 Activity (2026-10-06)
+
+Activity log ของทีม Product Specialist (แทน AppSheet K2-Activity) ซอร์สอยู่นอก repo นี้ที่
+`Documents/PSActivity/k2-activity` deploy ด้วย clasp ในบัญชี k2service2018
+
+- หน้าห่อลอกสคริปต์จาก `sale` ทั้งชุด (ตั้งตำแหน่ง/ความสูงจาก `visualViewport`) **ยังไม่ได้ยืนยันบน iPhone จริง**
+- **ไม่ใส่** `apple-mobile-web-app-capable` และ `viewport-fit=cover` ตามบทเรียนข้างบน และเอาออกจาก `doGet` ของตัวแอปแล้วด้วย
+- เป็นแอปหน้าเดียว สลับเนื้อหาในหน้าเดิม จึงไม่ต้องมีสคริปต์ postMessage
+- แอป login ด้วยรหัสผ่านของระบบเอง และเก็บ token ไว้ใน localStorage ของ iframe —
+  **ถ้าเปิดผ่านหน้าห่อบน Safari แล้วต้อง login ใหม่ทุกครั้ง** ให้สงสัยการกัน storage ของ iframe ข้ามโดเมนก่อน
+- ไอคอนวาดขึ้นใหม่ (K2 + เส้นชีพจร พื้นม่วงทึบ ไม่มีช่องอัลฟา) ยังไม่มีไฟล์ต้นฉบับจากทีม
